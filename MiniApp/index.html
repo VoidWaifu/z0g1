@@ -320,6 +320,10 @@
         const selectedItems = new Set();
         let sortKey = 'name', sortDir = 'asc';
 
+        // Серверный порядок элементов (уже отсортирован по имени)
+        let serverFoldersOrder = [];
+        let serverFilesOrder = [];
+
         const folderIconSVG = `<svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         const fileIconSVG = `<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z M14 2v6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         const infoIconSVG = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2" fill="none"/><line x1="12" y1="16" x2="12" y2="12" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/></svg>`;
@@ -334,22 +338,6 @@
             if (isNaN(utc)) return dateStr;
             const ly = utc.getFullYear().toString().slice(2), lm = (utc.getMonth()+1).toString().padStart(2,'0'), ld = utc.getDate().toString().padStart(2,'0'), lh = utc.getHours().toString().padStart(2,'0'), lmin = utc.getMinutes().toString().padStart(2,'0');
             return `${ld}.${lm}.${ly} ${lh}:${lmin}`;
-        }
-
-        const collator = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' });
-
-        function smartCompare(a, b) {
-            const aClean = (a || '').trim().replace(/\s+/g, ' ');
-            const bClean = (b || '').trim().replace(/\s+/g, ' ');
-            if (aClean === bClean) return 0;
-            const aWords = aClean.split(' ');
-            const bWords = bClean.split(' ');
-            const minLen = Math.min(aWords.length, bWords.length);
-            for (let i = 0; i < minLen; i++) {
-                const cmp = collator.compare(aWords[i], bWords[i]);
-                if (cmp !== 0) return cmp;
-            }
-            return aWords.length - bWords.length;
         }
 
         async function apiCall(endpoint, body) {
@@ -389,21 +377,31 @@
         });
         updateSortButtons();
 
-        function sortContents(folders, files) {
-            const cmp = (a,b) => {
-                if (sortKey === 'name') {
-                    return smartCompare(a.name||'', b.name||'');
-                } else if (sortKey === 'size') {
-                    return (a.size||0) - (b.size||0);
-                } else if (sortKey === 'date') {
-                    const va = a.date||'', vb = b.date||'';
-                    return va < vb ? -1 : va > vb ? 1 : 0;
+        function sortContents() {
+            let folders, files;
+            if (sortKey === 'name') {
+                // Используем серверный порядок и просто меняем направление
+                folders = [...serverFoldersOrder];
+                files = [...serverFilesOrder];
+                if (sortDir === 'desc') {
+                    folders.reverse();
+                    files.reverse();
                 }
-                return 0;
-            };
-            const sortedFolders = [...folders].sort((a,b) => sortDir==='asc'?cmp(a,b):cmp(b,a));
-            const sortedFiles = [...files].sort((a,b) => sortDir==='asc'?cmp(a,b):cmp(b,a));
-            return { folders: sortedFolders, files: sortedFiles };
+            } else {
+                // Локальная сортировка по размеру или дате
+                const cmp = (a, b) => {
+                    if (sortKey === 'size') {
+                        return (a.size || 0) - (b.size || 0);
+                    } else if (sortKey === 'date') {
+                        const va = a.date || '', vb = b.date || '';
+                        return va < vb ? -1 : va > vb ? 1 : 0;
+                    }
+                    return 0;
+                };
+                folders = [...currentRawFolders].sort((a, b) => sortDir === 'asc' ? cmp(a, b) : cmp(b, a));
+                files = [...currentRawFiles].sort((a, b) => sortDir === 'asc' ? cmp(a, b) : cmp(b, a));
+            }
+            renderContents(folders, files);
         }
 
         let currentRawFolders = [], currentRawFiles = [];
@@ -413,6 +411,9 @@
         async function loadContents() {
             try {
                 const d = await apiCall('/api/contents', {folder_id: currentFolderId});
+                // Сервер уже вернул отсортированные массивы
+                serverFoldersOrder = d.folders;
+                serverFilesOrder = d.files;
                 currentRawFolders = d.folders;
                 currentRawFiles = d.files;
                 currentBreadcrumbs = d.breadcrumbs;
@@ -423,7 +424,7 @@
                 contentEl.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Ошибка загрузки</div></div>';
             }
         }
-        function sortAndRender() { const {folders,files}=sortContents(currentRawFolders,currentRawFiles); renderContents(folders,files); }
+        function sortAndRender() { sortContents(); }
 
         const contentEl = document.getElementById('content');
         const breadcrumbsEl = document.getElementById('breadcrumbs');
@@ -752,7 +753,8 @@
                     moveContent.innerHTML = '<div class="empty-state"><div class="empty-text">Папок нет</div></div>';
                     return;
                 }
-                const sortedFolders = d.folders.sort((a,b) => smartCompare(a.name||'', b.name||''));
+                // Сервер уже отсортировал папки по имени, просто используем их
+                const sortedFolders = d.folders;
                 sortedFolders.forEach(f => {
                     const div = document.createElement('div');
                     div.className = 'item folder-item';
