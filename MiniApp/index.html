@@ -336,29 +336,12 @@
             return `${ld}.${lm}.${ly} ${lh}:${lmin}`;
         }
 
+        // Надёжная естественная сортировка с поддержкой чисел и русской локали
         function naturalCompare(a, b) {
-            const re = /(\d+|\D+)/g;
-            const aParts = a.match(re) || [];
-            const bParts = b.match(re) || [];
-            const len = Math.max(aParts.length, bParts.length);
-            for (let i = 0; i < len; i++) {
-                const aPart = aParts[i] || '';
-                const bPart = bParts[i] || '';
-                if (aPart === '' && bPart !== '') return -1;
-                if (bPart === '' && aPart !== '') return 1;
-                const aIsNum = /^\d+$/.test(aPart);
-                const bIsNum = /^\d+$/.test(bPart);
-                if (aIsNum && bIsNum) {
-                    const diff = parseInt(aPart, 10) - parseInt(bPart, 10);
-                    if (diff !== 0) return diff;
-                } else if (aIsNum || bIsNum) {
-                    return aIsNum ? -1 : 1;
-                } else {
-                    const cmp = aPart.localeCompare(bPart, 'ru', { sensitivity: 'base' });
-                    if (cmp !== 0) return cmp;
-                }
-            }
-            return 0;
+            return String(a || '').localeCompare(String(b || ''), 'ru', {
+                numeric: true,
+                sensitivity: 'base'
+            });
         }
 
         async function apiCall(endpoint, body) {
@@ -399,20 +382,26 @@
         updateSortButtons();
 
         function sortContents(folders, files) {
-            const cmp = (a,b) => {
+            const cmp = (a, b) => {
                 let va, vb;
                 if (sortKey === 'name') {
-                    va = a.name||''; vb = b.name||'';
+                    // Используем отображаемое имя (custom_name приоритетнее)
+                    va = (a.custom_name || a.name || '');
+                    vb = (b.custom_name || b.name || '');
                     return naturalCompare(va, vb);
                 } else if (sortKey === 'size') {
-                    va = a.size||0; vb = b.size||0; return va - vb;
+                    va = a.size || 0;
+                    vb = b.size || 0;
+                    return va - vb;
                 } else if (sortKey === 'date') {
-                    va = a.date||''; vb = b.date||''; return va < vb ? -1 : va > vb ? 1 : 0;
+                    va = a.date || '';
+                    vb = b.date || '';
+                    return va < vb ? -1 : va > vb ? 1 : 0;
                 }
                 return 0;
             };
-            const sortedFolders = [...folders].sort((a,b) => sortDir==='asc'?cmp(a,b):cmp(b,a));
-            const sortedFiles = [...files].sort((a,b) => sortDir==='asc'?cmp(a,b):cmp(b,a));
+            const sortedFolders = [...folders].sort((a, b) => sortDir === 'asc' ? cmp(a, b) : cmp(b, a));
+            const sortedFiles   = [...files].sort((a, b) => sortDir === 'asc' ? cmp(a, b) : cmp(b, a));
             return { folders: sortedFolders, files: sortedFiles };
         }
 
