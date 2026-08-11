@@ -711,7 +711,7 @@
                     if (xhr.status === 200) {
                         try {
                             const data = JSON.parse(xhr.responseText);
-                            showToast(`Файл загружен (ID: ${data.message_id})`);
+                            showToast(`Файл успешно загружен`);
                             loadContents();
                             document.getElementById('fileInput').value = '';
                         } catch (e) { showToast('Ошибка обработки ответа'); }
