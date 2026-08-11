@@ -136,12 +136,16 @@
             background: rgba(90, 130, 230, 0.14);
             outline: none;
         }
-        /* Активная ссылка (текущая страница) */
+        /* Активная ссылка — точно как на странице политики */
         nav.desktop-nav a.active {
-            color: #fff;
-            background: rgba(90, 130, 230, 0.25);
-            box-shadow: 0 0 0 2px var(--accent-glow);
+            color: var(--accent-bright);
             font-weight: 600;
+            font-size: 0.88rem;
+            background: rgba(90, 130, 230, 0.15);
+        }
+        nav.desktop-nav a.active:hover {
+            background: rgba(90, 130, 230, 0.25);
+            color: #fff;
         }
         nav.desktop-nav a.nav-accent {
             background: var(--accent);
@@ -166,10 +170,14 @@
             background: rgba(90, 130, 230, 0.10);
         }
         nav.desktop-nav a.privacy-link.active {
-            color: #fff;
-            background: rgba(90, 130, 230, 0.25);
-            box-shadow: 0 0 0 2px var(--accent-glow);
+            color: var(--accent-bright);
             font-weight: 600;
+            font-size: 0.88rem;
+            background: rgba(90, 130, 230, 0.15);
+        }
+        nav.desktop-nav a.privacy-link.active:hover {
+            background: rgba(90, 130, 230, 0.25);
+            color: #fff;
         }
 
         /* Mobile burger */
@@ -244,10 +252,9 @@
         }
         /* Активная ссылка в мобильном меню */
         .mobile-menu a.active {
-            color: #fff;
-            background: rgba(90, 130, 230, 0.25);
-            box-shadow: 0 0 0 2px var(--accent-glow);
+            color: var(--accent-bright);
             font-weight: 600;
+            background: rgba(90, 130, 230, 0.1);
         }
 
         /* ===== MAIN CONTENT ===== */
@@ -668,7 +675,6 @@
 
             <!-- Центральное изображение 16:9 -->
             <div class="hero-image-wrapper animate-in delay-1">
-                <!-- Замените src на актуальный путь к MainPage.png -->
                 <img
                 src="MainPage.png"
                 alt="Зоги — монстрик, логотип и символ проекта"
@@ -761,10 +767,13 @@
             <span class="footer-divider">|</span>
             <span>
                 📢 Telegram-канал:
-                <a href="https://t.me/VoidWaifu_" target="_blank" rel="noopener">@VoidWaifu</a>
+                <a href="https://t.me/voidwaifu_zogi" target="_blank" rel="noopener">@voidwaifu_zogi</a>
             </span>
             <span class="footer-divider">|</span>
             <span>Актуальные новости, участие в разработке и обратная связь</span>
+        </div>
+        <div style="margin-top:6px;font-size:0.78rem;opacity:0.6;">
+            Файлы остаются на серверах Telegram. Зоги не хранит и не скачивает ваши файлы.
         </div>
     </footer>
 
@@ -773,18 +782,15 @@
         (function() {
             // --- Определение текущей страницы и подсветка активной ссылки ---
             function setActiveLink() {
-                const currentUrl = window.location.href.replace(/\/+$/, ''); // убираем слеш в конце
+                const currentUrl = window.location.href.replace(/\/+$/, '');
                 const desktopLinks = document.querySelectorAll('#desktopNav a');
                 const mobileLinks = document.querySelectorAll('#mobileMenu a');
 
-                // Функция проверки совпадения
                 function markActive(links) {
                     links.forEach(link => {
                         const linkHref = link.getAttribute('href').replace(/\/+$/, '');
                         if (linkHref === currentUrl) {
                             link.classList.add('active');
-                        } else {
-                            link.classList.remove('active');
                         }
                     });
                 }
@@ -820,7 +826,6 @@
                 }
             });
 
-            // Закрытие меню при клике на ссылку
             const mobileLinks = mobileMenu.querySelectorAll('a');
             mobileLinks.forEach(function(link) {
                 link.addEventListener('click', function() {
@@ -828,14 +833,12 @@
                 });
             });
 
-            // Закрытие по Escape
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape' && mobileMenu.classList.contains('active')) {
                     closeMenu();
                 }
             });
 
-            // Закрытие по клику вне меню
             mobileMenu.addEventListener('click', function(e) {
                 if (e.target === mobileMenu) {
                     closeMenu();
