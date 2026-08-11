@@ -336,31 +336,10 @@
             return `${ld}.${lm}.${ly} ${lh}:${lmin}`;
         }
 
-        function extractNumbers(str) {
-            if (!str) return [];
-            const matches = str.match(/\d+/g);
-            return matches ? matches.map(Number) : [];
-        }
-
-        function compareNumberArrays(a, b) {
-            const len = Math.min(a.length, b.length);
-            for (let i = 0; i < len; i++) {
-                if (a[i] !== b[i]) return a[i] - b[i];
-            }
-            return a.length - b.length;
-        }
-
         function naturalCompare(a, b) {
-            const aNorm = (a || '').normalize('NFC').replace(/\s+/g, ' ').trim();
-            const bNorm = (b || '').normalize('NFC').replace(/\s+/g, ' ').trim();
-
-            const aNums = extractNumbers(aNorm);
-            const bNums = extractNumbers(bNorm);
-            if (aNums.length > 0 || bNums.length > 0) {
-                const numDiff = compareNumberArrays(aNums, bNums);
-                if (numDiff !== 0) return numDiff;
-            }
-
+            const norm = (s) => (s || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+            const aNorm = norm(a);
+            const bNorm = norm(b);
             const re = /(\d+|\D+)/g;
             const aParts = aNorm.match(re) || [];
             const bParts = bNorm.match(re) || [];
