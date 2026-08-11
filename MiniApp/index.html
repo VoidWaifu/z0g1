@@ -336,18 +336,14 @@
             return `${ld}.${lm}.${ly} ${lh}:${lmin}`;
         }
 
-        function naturalCompare(a, b) {
-            const normalize = (s) => {
-                if (!s) return '';
-                return s.normalize('NFC').replace(/\s+/g, ' ').trim();
-            };
-            const aNorm = normalize(a);
-            const bNorm = normalize(b);
+        function compareTokens(a, b) {
+            const aNorm = (a || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+            const bNorm = (b || '').normalize('NFC').replace(/\s+/g, ' ').trim();
             const re = /(\d+|\D+)/g;
             const aParts = aNorm.match(re) || [];
             const bParts = bNorm.match(re) || [];
-            const maxLen = Math.max(aParts.length, bParts.length);
-            for (let i = 0; i < maxLen; i++) {
+            const len = Math.max(aParts.length, bParts.length);
+            for (let i = 0; i < len; i++) {
                 const aPart = aParts[i] || '';
                 const bPart = bParts[i] || '';
                 if (aPart === '' && bPart !== '') return -1;
@@ -365,6 +361,20 @@
                 }
             }
             return 0;
+        }
+
+        function compareByWords(a, b) {
+            const aNorm = (a || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+            const bNorm = (b || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+            if (aNorm === bNorm) return 0;
+            const aWords = aNorm.split(' ');
+            const bWords = bNorm.split(' ');
+            const minLen = Math.min(aWords.length, bWords.length);
+            for (let i = 0; i < minLen; i++) {
+                const cmp = compareTokens(aWords[i], bWords[i]);
+                if (cmp !== 0) return cmp;
+            }
+            return aWords.length - bWords.length;
         }
 
         async function apiCall(endpoint, body) {
@@ -409,7 +419,7 @@
                 let va, vb;
                 if (sortKey === 'name') {
                     va = a.name||''; vb = b.name||'';
-                    return naturalCompare(va, vb);
+                    return compareByWords(va, vb);
                 } else if (sortKey === 'size') {
                     va = a.size||0; vb = b.size||0; return va - vb;
                 } else if (sortKey === 'date') {
@@ -768,7 +778,7 @@
                     moveContent.innerHTML = '<div class="empty-state"><div class="empty-text">Папок нет</div></div>';
                     return;
                 }
-                const sortedFolders = d.folders.sort((a,b) => naturalCompare(a.name||'', b.name||''));
+                const sortedFolders = d.folders.sort((a,b) => compareByWords(a.name||'', b.name||''));
                 sortedFolders.forEach(f => {
                     const div = document.createElement('div');
                     div.className = 'item folder-item';
