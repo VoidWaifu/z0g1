@@ -324,6 +324,8 @@
         const fileIconSVG = `<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z M14 2v6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         const infoIconSVG = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2" fill="none"/><line x1="12" y1="16" x2="12" y2="12" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/></svg>`;
 
+        const collator = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' });
+
         function escapeHtml(text) { const map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}; return text.replace(/[&<>"']/g, m=>map[m]); }
         function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._timeout); t._timeout = setTimeout(() => t.classList.remove('show'), 3000); }
         function formatSize(bytes) { if (!bytes || bytes===0) return '—'; const u = ['B','KB','MB','GB']; let i = 0, s = bytes; while (s>=1024 && i<u.length-1){ s/=1024; i++; } return s.toFixed(1)+' '+u[i]; }
@@ -334,37 +336,6 @@
             if (isNaN(utc)) return dateStr;
             const ly = utc.getFullYear().toString().slice(2), lm = (utc.getMonth()+1).toString().padStart(2,'0'), ld = utc.getDate().toString().padStart(2,'0'), lh = utc.getHours().toString().padStart(2,'0'), lmin = utc.getMinutes().toString().padStart(2,'0');
             return `${ld}.${lm}.${ly} ${lh}:${lmin}`;
-        }
-
-        function naturalCompare(a, b) {
-            const norm = (s) => {
-                if (!s) return '';
-                return s.normalize('NFC').replace(/\s+/g, ' ').trim();
-            };
-            const aNorm = norm(a);
-            const bNorm = norm(b);
-            const re = /(\d+|\D+)/g;
-            const aParts = aNorm.match(re) || [];
-            const bParts = bNorm.match(re) || [];
-            const len = Math.max(aParts.length, bParts.length);
-            for (let i = 0; i < len; i++) {
-                const aPart = aParts[i] || '';
-                const bPart = bParts[i] || '';
-                if (aPart === '' && bPart !== '') return -1;
-                if (bPart === '' && aPart !== '') return 1;
-                const aIsNum = /^\d+$/.test(aPart);
-                const bIsNum = /^\d+$/.test(bPart);
-                if (aIsNum && bIsNum) {
-                    const diff = parseInt(aPart, 10) - parseInt(bPart, 10);
-                    if (diff !== 0) return diff;
-                } else if (aIsNum || bIsNum) {
-                    return aIsNum ? -1 : 1;
-                } else {
-                    const cmp = aPart.localeCompare(bPart, 'ru', { sensitivity: 'base' });
-                    if (cmp !== 0) return cmp;
-                }
-            }
-            return 0;
         }
 
         async function apiCall(endpoint, body) {
@@ -406,14 +377,13 @@
 
         function sortContents(folders, files) {
             const cmp = (a,b) => {
-                let va, vb;
                 if (sortKey === 'name') {
-                    va = a.name||''; vb = b.name||'';
-                    return naturalCompare(va, vb);
+                    return collator.compare(a.name||'', b.name||'');
                 } else if (sortKey === 'size') {
-                    va = a.size||0; vb = b.size||0; return va - vb;
+                    return (a.size||0) - (b.size||0);
                 } else if (sortKey === 'date') {
-                    va = a.date||''; vb = b.date||''; return va < vb ? -1 : va > vb ? 1 : 0;
+                    const va = a.date||'', vb = b.date||'';
+                    return va < vb ? -1 : va > vb ? 1 : 0;
                 }
                 return 0;
             };
@@ -768,7 +738,7 @@
                     moveContent.innerHTML = '<div class="empty-state"><div class="empty-text">Папок нет</div></div>';
                     return;
                 }
-                const sortedFolders = d.folders.sort((a,b) => naturalCompare(a.name||'', b.name||''));
+                const sortedFolders = d.folders.sort((a,b) => collator.compare(a.name||'', b.name||''));
                 sortedFolders.forEach(f => {
                     const div = document.createElement('div');
                     div.className = 'item folder-item';
