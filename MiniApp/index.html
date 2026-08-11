@@ -337,14 +337,17 @@
         }
 
         function naturalCompare(a, b) {
-            const norm = (s) => (s || '').normalize('NFC').replace(/\s+/g, ' ').trim();
-            const aNorm = norm(a);
-            const bNorm = norm(b);
+            const normalize = (s) => {
+                if (!s) return '';
+                return s.normalize('NFC').replace(/\s+/g, ' ').trim();
+            };
+            const aNorm = normalize(a);
+            const bNorm = normalize(b);
             const re = /(\d+|\D+)/g;
             const aParts = aNorm.match(re) || [];
             const bParts = bNorm.match(re) || [];
-            const len = Math.max(aParts.length, bParts.length);
-            for (let i = 0; i < len; i++) {
+            const maxLen = Math.max(aParts.length, bParts.length);
+            for (let i = 0; i < maxLen; i++) {
                 const aPart = aParts[i] || '';
                 const bPart = bParts[i] || '';
                 if (aPart === '' && bPart !== '') return -1;
