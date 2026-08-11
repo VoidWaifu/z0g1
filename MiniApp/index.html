@@ -320,10 +320,6 @@
         const selectedItems = new Set();
         let sortKey = 'name', sortDir = 'asc';
 
-        // Серверный порядок элементов (уже отсортирован по имени)
-        let serverFoldersOrder = [];
-        let serverFilesOrder = [];
-
         const folderIconSVG = `<svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         const fileIconSVG = `<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z M14 2v6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         const infoIconSVG = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2" fill="none"/><line x1="12" y1="16" x2="12" y2="12" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/></svg>`;
@@ -338,6 +334,31 @@
             if (isNaN(utc)) return dateStr;
             const ly = utc.getFullYear().toString().slice(2), lm = (utc.getMonth()+1).toString().padStart(2,'0'), ld = utc.getDate().toString().padStart(2,'0'), lh = utc.getHours().toString().padStart(2,'0'), lmin = utc.getMinutes().toString().padStart(2,'0');
             return `${ld}.${lm}.${ly} ${lh}:${lmin}`;
+        }
+
+        function naturalCompare(a, b) {
+            const re = /(\d+|\D+)/g;
+            const aParts = a.match(re) || [];
+            const bParts = b.match(re) || [];
+            const len = Math.max(aParts.length, bParts.length);
+            for (let i = 0; i < len; i++) {
+                const aPart = aParts[i] || '';
+                const bPart = bParts[i] || '';
+                if (aPart === '' && bPart !== '') return -1;
+                if (bPart === '' && aPart !== '') return 1;
+                const aIsNum = /^\d+$/.test(aPart);
+                const bIsNum = /^\d+$/.test(bPart);
+                if (aIsNum && bIsNum) {
+                    const diff = parseInt(aPart, 10) - parseInt(bPart, 10);
+                    if (diff !== 0) return diff;
+                } else if (aIsNum || bIsNum) {
+                    return aIsNum ? -1 : 1;
+                } else {
+                    const cmp = aPart.localeCompare(bPart, 'ru', { sensitivity: 'base' });
+                    if (cmp !== 0) return cmp;
+                }
+            }
+            return 0;
         }
 
         async function apiCall(endpoint, body) {
@@ -377,31 +398,22 @@
         });
         updateSortButtons();
 
-        function sortContents() {
-            let folders, files;
-            if (sortKey === 'name') {
-                // Используем серверный порядок и просто меняем направление
-                folders = [...serverFoldersOrder];
-                files = [...serverFilesOrder];
-                if (sortDir === 'desc') {
-                    folders.reverse();
-                    files.reverse();
+        function sortContents(folders, files) {
+            const cmp = (a,b) => {
+                let va, vb;
+                if (sortKey === 'name') {
+                    va = a.name||''; vb = b.name||'';
+                    return naturalCompare(va, vb);
+                } else if (sortKey === 'size') {
+                    va = a.size||0; vb = b.size||0; return va - vb;
+                } else if (sortKey === 'date') {
+                    va = a.date||''; vb = b.date||''; return va < vb ? -1 : va > vb ? 1 : 0;
                 }
-            } else {
-                // Локальная сортировка по размеру или дате
-                const cmp = (a, b) => {
-                    if (sortKey === 'size') {
-                        return (a.size || 0) - (b.size || 0);
-                    } else if (sortKey === 'date') {
-                        const va = a.date || '', vb = b.date || '';
-                        return va < vb ? -1 : va > vb ? 1 : 0;
-                    }
-                    return 0;
-                };
-                folders = [...currentRawFolders].sort((a, b) => sortDir === 'asc' ? cmp(a, b) : cmp(b, a));
-                files = [...currentRawFiles].sort((a, b) => sortDir === 'asc' ? cmp(a, b) : cmp(b, a));
-            }
-            renderContents(folders, files);
+                return 0;
+            };
+            const sortedFolders = [...folders].sort((a,b) => sortDir==='asc'?cmp(a,b):cmp(b,a));
+            const sortedFiles = [...files].sort((a,b) => sortDir==='asc'?cmp(a,b):cmp(b,a));
+            return { folders: sortedFolders, files: sortedFiles };
         }
 
         let currentRawFolders = [], currentRawFiles = [];
@@ -411,9 +423,6 @@
         async function loadContents() {
             try {
                 const d = await apiCall('/api/contents', {folder_id: currentFolderId});
-                // Сервер уже вернул отсортированные массивы
-                serverFoldersOrder = d.folders;
-                serverFilesOrder = d.files;
                 currentRawFolders = d.folders;
                 currentRawFiles = d.files;
                 currentBreadcrumbs = d.breadcrumbs;
@@ -424,7 +433,7 @@
                 contentEl.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Ошибка загрузки</div></div>';
             }
         }
-        function sortAndRender() { sortContents(); }
+        function sortAndRender() { const {folders,files}=sortContents(currentRawFolders,currentRawFiles); renderContents(folders,files); }
 
         const contentEl = document.getElementById('content');
         const breadcrumbsEl = document.getElementById('breadcrumbs');
@@ -753,8 +762,7 @@
                     moveContent.innerHTML = '<div class="empty-state"><div class="empty-text">Папок нет</div></div>';
                     return;
                 }
-                // Сервер уже отсортировал папки по имени, просто используем их
-                const sortedFolders = d.folders;
+                const sortedFolders = d.folders.sort((a,b) => naturalCompare(a.name||'', b.name||''));
                 sortedFolders.forEach(f => {
                     const div = document.createElement('div');
                     div.className = 'item folder-item';
