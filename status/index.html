@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статус сервиса | Зоги</title>
+    <style>
+        :root {
+            --bg-deep: #080d24;
+            --bg-primary: #0c1335;
+            --bg-card: #111a40;
+            --accent: #4f7de0;
+            --accent-bright: #6b93f0;
+            --accent-soft: #3a5cb8;
+            --accent-glow: #5b82e8;
+            --text-primary: #e8ecf7;
+            --text-secondary: #b0bbd8;
+            --text-muted: #7a87aa;
+            --border-subtle: rgba(100, 140, 220, 0.2);
+            --border-glow: rgba(90, 130, 230, 0.45);
+            --glass-bg: rgba(15, 25, 60, 0.55);
+            --glass-border: rgba(120, 150, 220, 0.25);
+            --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(90, 130, 230, 0.12);
+            --shadow-glow: 0 0 40px rgba(75, 120, 220, 0.3), 0 0 80px rgba(60, 100, 200, 0.12);
+            --radius-sm: 10px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-xl: 32px;
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            --font-main: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+
+            /* Status page colours */
+            --green-status: #4ade80;
+            --green-glow: rgba(74, 222, 128, 0.45);
+            --green-bg: rgba(74, 222, 128, 0.08);
+            --green-border: rgba(74, 222, 128, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-deep);
+            background-image:
+                radial-gradient(ellipse at 30% 15%, rgba(65, 105, 210, 0.10) 0%, transparent 65%),
+                radial-gradient(ellipse at 70% 60%, rgba(50, 90, 190, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 50% 85%, rgba(40, 75, 170, 0.06) 0%, transparent 55%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ===== HEADER ===== */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--glass-bg);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 0 24px;
+            transition: var(--transition);
+        }
+
+        .header-inner {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+            gap: 16px;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--text-primary);
+            flex-shrink: 0;
+        }
+        .logo-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, var(--accent-glow), var(--accent-soft));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #fff;
+            box-shadow: 0 0 18px rgba(75, 120, 220, 0.35);
+            flex-shrink: 0;
+        }
+        .logo-text {
+            font-weight: 700;
+            font-size: 1.25rem;
+            letter-spacing: -0.01em;
+            color: #fff;
+            white-space: nowrap;
+        }
+
+        /* Desktop nav */
+        nav.desktop-nav {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        nav.desktop-nav a {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 22px;
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.93rem;
+            transition: var(--transition);
+            white-space: nowrap;
+            position: relative;
+        }
+        nav.desktop-nav a:hover,
+        nav.desktop-nav a:focus-visible {
+            color: #fff;
+            background: rgba(90, 130, 230, 0.14);
+            outline: none;
+        }
+        /* Активная ссылка */
+        nav.desktop-nav a.active {
+            color: var(--accent-bright);
+            font-weight: 600;
+            font-size: 0.88rem;
+            background: rgba(90, 130, 230, 0.15);
+        }
+        nav.desktop-nav a.active:hover {
+            background: rgba(90, 130, 230, 0.25);
+            color: #fff;
+        }
+        nav.desktop-nav a.nav-accent {
+            background: var(--accent);
+            color: #fff;
+            font-weight: 600;
+            box-shadow: 0 2px 12px rgba(70, 115, 210, 0.35);
+            margin-left: 4px;
+        }
+        nav.desktop-nav a.nav-accent:hover {
+            background: var(--accent-bright);
+            box-shadow: 0 4px 20px rgba(80, 130, 230, 0.5);
+        }
+        /* Privacy link offset */
+        nav.desktop-nav a.privacy-link {
+            margin-left: 16px;
+            color: var(--text-muted);
+            font-weight: 400;
+            font-size: 0.88rem;
+        }
+        nav.desktop-nav a.privacy-link:hover {
+            color: #fff;
+            background: rgba(90, 130, 230, 0.10);
+        }
+        nav.desktop-nav a.privacy-link.active {
+            color: var(--accent-bright);
+            font-weight: 600;
+            font-size: 0.88rem;
+            background: rgba(90, 130, 230, 0.15);
+        }
+        nav.desktop-nav a.privacy-link.active:hover {
+            background: rgba(90, 130, 230, 0.25);
+            color: #fff;
+        }
+
+        /* Mobile burger */
+        .burger-btn {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            color: var(--text-primary);
+            transition: var(--transition);
+            z-index: 110;
+        }
+        .burger-btn:hover {
+            background: rgba(90, 130, 230, 0.15);
+        }
+        .burger-btn svg {
+            width: 26px;
+            height: 26px;
+            display: block;
+        }
+
+        /* Mobile menu overlay */
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(8, 13, 36, 0.92);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            z-index: 105;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .mobile-menu.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .mobile-menu a {
+            display: block;
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 12px 28px;
+            border-radius: 28px;
+            transition: var(--transition);
+        }
+        .mobile-menu a:hover {
+            color: #fff;
+            background: rgba(90, 130, 230, 0.18);
+        }
+        .mobile-menu a.nav-accent {
+            background: var(--accent);
+            color: #fff;
+            font-weight: 600;
+        }
+        .mobile-menu a.privacy-link-mob {
+            color: var(--text-muted);
+            font-weight: 400;
+            font-size: 1.05rem;
+            margin-top: 12px;
+        }
+        /* Активная ссылка в мобильном меню */
+        .mobile-menu a.active {
+            color: var(--accent-bright);
+            font-weight: 600;
+            background: rgba(90, 130, 230, 0.1);
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        main {
+            flex: 1;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 28px 24px 60px;
+            width: 100%;
+        }
+
+        /* ---- Status banner ---- */
+        .status-banner {
+            text-align: center;
+            margin-bottom: 36px;
+            position: relative;
+        }
+        .status-banner .status-heading {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--green-bg);
+            border: 1.5px solid var(--green-border);
+            padding: 14px 28px;
+            border-radius: 40px;
+            box-shadow: 0 0 32px var(--green-glow), 0 0 60px rgba(74, 222, 128, 0.15);
+            animation: fadeInUp 0.6s ease forwards;
+        }
+        .status-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--green-status);
+            box-shadow: 0 0 16px var(--green-glow);
+            animation: pulse-green 2.2s infinite;
+            flex-shrink: 0;
+        }
+        @keyframes pulse-green {
+            0%,
+            100% {
+                box-shadow: 0 0 10px rgba(74, 222, 128, 0.45);
+            }
+            50% {
+                box-shadow: 0 0 26px rgba(74, 222, 128, 0.8), 0 0 44px rgba(74, 222, 128, 0.3);
+            }
+        }
+        .status-banner h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.01em;
+            margin: 0;
+            white-space: nowrap;
+        }
+        .status-banner .last-updated {
+            display: block;
+            margin-top: 10px;
+            font-size: 0.88rem;
+            color: var(--text-muted);
+        }
+
+        /* ---- Stats row ---- */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 18px;
+            margin-bottom: 36px;
+        }
+        .stat-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 24px 22px;
+            text-align: center;
+            box-shadow: var(--shadow-card);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 90px;
+            height: 90px;
+            background: radial-gradient(circle, rgba(90, 140, 230, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(100, 145, 225, 0.25);
+            border-color: var(--border-glow);
+        }
+        .stat-card .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-bottom: 8px;
+        }
+        .stat-card .stat-number {
+            font-size: 2.8rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #c0d4ff, #80a6f8, #b8ceff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: transparent;
+            line-height: 1.1;
+        }
+
+        /* ---- Services grid ---- */
+        .services-section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 16px;
+            letter-spacing: -0.01em;
+            text-align: center;
+        }
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .service-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 20px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: var(--shadow-card);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+        .service-card::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            right: -20px;
+            width: 70px;
+            height: 70px;
+            background: radial-gradient(circle, rgba(74, 222, 128, 0.12) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            transition: var(--transition);
+        }
+        .service-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(74, 222, 128, 0.3);
+            border-color: var(--green-border);
+        }
+        .service-card:hover::before {
+            background: radial-gradient(circle, rgba(74, 222, 128, 0.22) 0%, transparent 70%);
+        }
+        .service-icon {
+            font-size: 2rem;
+            flex-shrink: 0;
+            width: 44px;
+            text-align: center;
+        }
+        .service-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .service-name {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #fff;
+            margin-bottom: 4px;
+            letter-spacing: -0.01em;
+        }
+        .service-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(74, 222, 128, 0.12);
+            color: var(--green-status);
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            border: 1px solid rgba(74, 222, 128, 0.2);
+        }
+        .service-status .mini-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--green-status);
+            box-shadow: 0 0 8px var(--green-glow);
+            flex-shrink: 0;
+        }
+
+        /* ---- Info block (shared style) ---- */
+        .info-block {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 28px 28px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-card);
+            transition: var(--transition);
+            text-align: center;
+        }
+        .info-block:hover {
+            border-color: var(--border-glow);
+        }
+        .info-block p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.7;
+            margin-bottom: 6px;
+        }
+        .info-block p:last-child {
+            margin-bottom: 0;
+        }
+        .info-block .highlight {
+            color: var(--accent-bright);
+            font-weight: 600;
+        }
+        .info-block a {
+            color: var(--accent-bright);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .info-block a:hover {
+            text-decoration: underline;
+            color: #fff;
+        }
+
+        /* ===== FOOTER ===== */
+        footer {
+            background: var(--bg-primary);
+            border-top: 1px solid var(--glass-border);
+            padding: 24px 24px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            line-height: 1.8;
+        }
+        footer a {
+            color: var(--accent-bright);
+            text-decoration: none;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        footer a:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+        .footer-inner {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 8px 20px;
+        }
+        .footer-divider {
+            color: var(--text-muted);
+            opacity: 0.5;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .header-inner {
+                height: 56px;
+            }
+            nav.desktop-nav {
+                display: none;
+            }
+            .burger-btn {
+                display: block;
+            }
+            .mobile-menu {
+                display: flex;
+            }
+            .status-banner h1 {
+                font-size: 1.2rem;
+            }
+            .status-banner .status-heading {
+                padding: 12px 20px;
+                gap: 8px;
+            }
+            .status-dot {
+                width: 11px;
+                height: 11px;
+            }
+            .stat-card .stat-number {
+                font-size: 2.2rem;
+            }
+            .stats-row {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .services-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .info-block {
+                padding: 20px 16px;
+            }
+            footer {
+                font-size: 0.82rem;
+                padding: 18px 16px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .status-banner h1 {
+                font-size: 1rem;
+            }
+            .status-banner .status-heading {
+                padding: 10px 16px;
+                gap: 6px;
+            }
+            .stat-card .stat-number {
+                font-size: 1.8rem;
+            }
+            .logo-text {
+                font-size: 1.05rem;
+            }
+            .logo-icon {
+                width: 32px;
+                height: 32px;
+                font-size: 1.1rem;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(24px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-in {
+            animation: fadeInUp 0.6s ease forwards;
+        }
+        .delay-1 {
+            animation-delay: 0.1s;
+            opacity: 0;
+        }
+        .delay-2 {
+            animation-delay: 0.2s;
+            opacity: 0;
+        }
+        .delay-3 {
+            animation-delay: 0.3s;
+            opacity: 0;
+        }
+        .delay-4 {
+            animation-delay: 0.4s;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== HEADER ===== -->
+    <header>
+        <div class="header-inner">
+            <a href="https://voidwaifu.github.io/z0g1/" class="logo-area" title="Зоги — главная">
+                <div class="logo-icon">Z</div>
+                <span class="logo-text">Зоги</span>
+            </a>
+
+            <!-- Desktop navigation -->
+            <nav class="desktop-nav" id="desktopNav">
+                <a href="https://voidwaifu.github.io/z0g1/">Главная страница</a>
+                <a href="https://t.me/z0g1_bot">Телеграм бот</a>
+                <a href="https://voidwaifu.github.io/z0g1/web/">Веб версия</a>
+                <a href="https://voidwaifu.github.io/z0g1/status/">Статус</a>
+                <a href="https://voidwaifu.github.io/z0g1/privacy/" class="privacy-link">Политика конфиденциальности</a>
+            </nav>
+
+            <!-- Burger button (mobile) -->
+            <button class="burger-btn" id="burgerBtn" aria-label="Открыть меню" aria-expanded="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="4" y1="6" x2="20" y2="6"></line>
+                    <line x1="4" y1="12" x2="20" y2="12"></line>
+                    <line x1="4" y1="18" x2="20" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Mobile menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="https://voidwaifu.github.io/z0g1/">Главная страница</a>
+        <a href="https://t.me/z0g1_bot">Телеграм бот</a>
+        <a href="https://voidwaifu.github.io/z0g1/web/">Веб версия</a>
+        <a href="https://voidwaifu.github.io/z0g1/status/">Статус</a>
+        <a href="https://voidwaifu.github.io/z0g1/privacy/" class="privacy-link-mob">Политика конфиденциальности</a>
+    </div>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main>
+        <!-- Status banner: всё работает -->
+        <section class="status-banner animate-in">
+            <div class="status-heading">
+                <span class="status-dot" aria-hidden="true"></span>
+                <h1>Все работает нормально</h1>
+            </div>
+            <span class="last-updated">Последняя проверка: 11 августа 2026 г.</span>
+        </section>
+
+        <!-- Stats: пользователи -->
+        <div class="stats-row">
+            <div class="stat-card animate-in delay-1">
+                <div class="stat-label">👥 Пользователей попробовали Зоги</div>
+                <div class="stat-number">1 847</div>
+            </div>
+            <div class="stat-card animate-in delay-2">
+                <div class="stat-label">🔥 Активных пользователей</div>
+                <div class="stat-number">426</div>
+            </div>
+        </div>
+
+        <!-- Services status -->
+        <h2 class="services-section-title animate-in delay-2">Состояние сервисов</h2>
+        <div class="services-grid">
+            <div class="service-card animate-in delay-2">
+                <span class="service-icon">🌐</span>
+                <div class="service-info">
+                    <div class="service-name">Сайт</div>
+                    <span class="service-status">
+                        <span class="mini-dot"></span> Работает
+                    </span>
+                </div>
+            </div>
+            <div class="service-card animate-in delay-3">
+                <span class="service-icon">🤖</span>
+                <div class="service-info">
+                    <div class="service-name">Телеграм бот</div>
+                    <span class="service-status">
+                        <span class="mini-dot"></span> Работает
+                    </span>
+                </div>
+            </div>
+            <div class="service-card animate-in delay-3">
+                <span class="service-icon">📱</span>
+                <div class="service-info">
+                    <div class="service-name">Мини приложение</div>
+                    <span class="service-status">
+                        <span class="mini-dot"></span> Работает
+                    </span>
+                </div>
+            </div>
+            <div class="service-card animate-in delay-4">
+                <span class="service-icon">💻</span>
+                <div class="service-info">
+                    <div class="service-name">Веб версия</div>
+                    <span class="service-status">
+                        <span class="mini-dot"></span> Работает
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Дополнительная информация -->
+        <div class="info-block animate-in delay-4">
+            <p>
+                🧪 <span class="highlight">Зоги</span> находится на стадии бета-тестирования.
+                Если вы заметили неполадки, пожалуйста, сообщите об этом в
+                <a href="https://t.me/VoidWaifu" target="_blank" rel="noopener">@VoidWaifu</a>.
+            </p>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-top:8px;">
+                Страница обновляется вручную. Последняя проверка статуса всех сервисов: 11 августа 2026 г.
+            </p>
+        </div>
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer>
+        <div class="footer-inner">
+            <span>© <a href="https://voidwaifu.github.io/" target="_blank" rel="noopener">VoidWaifu</a> — автор проекта Зоги</span>
+            <span class="footer-divider">|</span>
+            <span>
+                📢 Telegram-канал:
+                <a href="https://t.me/VoidWaifu" target="_blank" rel="noopener">@VoidWaifu</a>
+            </span>
+            <span class="footer-divider">|</span>
+            <span>Актуальные новости, участие в разработке и обратная связь</span>
+        </div>
+    </footer>
+
+    <!-- ===== SCRIPTS ===== -->
+    <script>
+        (function() {
+            // --- Определение текущей страницы и подсветка активной ссылки ---
+            function setActiveLink() {
+                const currentUrl = window.location.href.replace(/\/+$/, '');
+                const desktopLinks = document.querySelectorAll('#desktopNav a');
+                const mobileLinks = document.querySelectorAll('#mobileMenu a');
+
+                function markActive(links) {
+                    links.forEach(link => {
+                        const linkHref = link.getAttribute('href').replace(/\/+$/, '');
+                        if (linkHref === currentUrl) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+
+                markActive(desktopLinks);
+                markActive(mobileLinks);
+            }
+
+            setActiveLink();
+
+            // --- Мобильное меню ---
+            const burgerBtn = document.getElementById('burgerBtn');
+            const mobileMenu = document.getElementById('mobileMenu');
+            const body = document.body;
+
+            function openMenu() {
+                mobileMenu.classList.add('active');
+                burgerBtn.setAttribute('aria-expanded', 'true');
+                body.style.overflow = 'hidden';
+            }
+
+            function closeMenu() {
+                mobileMenu.classList.remove('active');
+                burgerBtn.setAttribute('aria-expanded', 'false');
+                body.style.overflow = '';
+            }
+
+            burgerBtn.addEventListener('click', function() {
+                if (mobileMenu.classList.contains('active')) {
+                    closeMenu();
+                } else {
+                    openMenu();
+                }
+            });
+
+            const mobileLinks = mobileMenu.querySelectorAll('a');
+            mobileLinks.forEach(function(link) {
+                link.addEventListener('click', function() {
+                    closeMenu();
+                });
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && mobileMenu.classList.contains('active')) {
+                    closeMenu();
+                }
+            });
+
+            mobileMenu.addEventListener('click', function(e) {
+                if (e.target === mobileMenu) {
+                    closeMenu();
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
