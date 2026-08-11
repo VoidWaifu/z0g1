@@ -116,10 +116,9 @@
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px;
         }
         .item-size {
-            width: 70px; flex: none;
+            width: 60px; flex: none;
             text-align: right; margin-right: 8px;
             font-size: 12px; color: var(--tg-theme-hint-color);
-            white-space: nowrap;
         }
         .item-info-btn {
             background: none; border: none; cursor: pointer; padding: 4px;
@@ -681,10 +680,9 @@
                 return;
             }
             folders.forEach(folder => {
-                const displayValue = sortKey === 'date' ? (formatDateUTC(folder.date) || '—') : formatSize(folder.size);
                 const div = document.createElement('div'); div.className = 'item folder-item';
                 div.dataset.type = 'folder'; div.dataset.name = folder.name; div.dataset.folderId = folder.id;
-                div.innerHTML = `<div class="checkbox-col"><input type="checkbox" class="checkbox"></div><span class="icon">${folderIconSVG}</span><span class="item-name">${escapeHtml(folder.name)}</span><span class="item-size">${displayValue}</span><button class="item-info-btn" data-type="folder" data-id="${folder.id}">${infoIconSVG}</button>`;
+                div.innerHTML = `<div class="checkbox-col"><input type="checkbox" class="checkbox"></div><span class="icon">${folderIconSVG}</span><span class="item-name">${escapeHtml(folder.name)}</span><span class="item-size">${formatSize(folder.size)}</span><button class="item-info-btn" data-type="folder" data-id="${folder.id}">${infoIconSVG}</button>`;
                 const cb = div.querySelector('.checkbox');
                 cb.addEventListener('change', e => { e.stopPropagation(); toggleSelection({type:'folder', folder_id: folder.id, name: folder.name}); });
                 div.addEventListener('click', e => { if (e.target.tagName==='INPUT' && e.target.type==='checkbox') return; if (e.target.closest('.item-info-btn')) return; navigateToFolder(folder.id); });
@@ -692,7 +690,6 @@
                 contentEl.appendChild(div);
             });
             files.forEach(file => {
-                const displayValue = sortKey === 'date' ? (formatDateUTC(file.date) || '—') : formatSize(file.size);
                 const div = document.createElement('div'); div.className = 'item file-item';
                 div.dataset.type = 'file'; div.dataset.msgId = file.msg_id; div.dataset.name = file.name;
                 div.dataset.customName = file.custom_name || '';
@@ -706,7 +703,7 @@
                 let nameBlock = `<div class="item-name-block"><div class="item-name">${escapeHtml(displayName)}</div>`;
                 if (subName) nameBlock += `<div class="file-custom-name">${escapeHtml(subName)}</div>`;
                 nameBlock += `</div>`;
-                div.innerHTML = `<div class="checkbox-col"><input type="checkbox" class="checkbox"></div><span class="icon">${iconHtml}</span>${nameBlock}<span class="item-size">${displayValue}</span><button class="item-info-btn" data-type="file" data-id="${file.msg_id}">${infoIconSVG}</button>`;
+                div.innerHTML = `<div class="checkbox-col"><input type="checkbox" class="checkbox"></div><span class="icon">${iconHtml}</span>${nameBlock}<span class="item-size">${formatSize(file.size)}</span><button class="item-info-btn" data-type="file" data-id="${file.msg_id}">${infoIconSVG}</button>`;
                 const cb = div.querySelector('.checkbox');
                 cb.addEventListener('change', e => { e.stopPropagation(); toggleSelection({type:'file', msg_id: file.msg_id, name: file.name, custom_name: file.custom_name}); });
                 div.addEventListener('click', e => { if (e.target.tagName==='INPUT' && e.target.type==='checkbox') return; if (e.target.closest('.item-info-btn')) return; });
