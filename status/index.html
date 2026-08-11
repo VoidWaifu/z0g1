@@ -28,12 +28,9 @@
             --radius-xl: 32px;
             --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             --font-main: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
-
-            /* Status page colours */
-            --green-status: #4ade80;
-            --green-glow: rgba(74, 222, 128, 0.45);
-            --green-bg: rgba(74, 222, 128, 0.08);
-            --green-border: rgba(74, 222, 128, 0.3);
+            --status-ok: #4ade80;
+            --status-ok-bg: rgba(74, 222, 128, 0.12);
+            --status-ok-border: rgba(74, 222, 128, 0.35);
         }
 
         * {
@@ -142,11 +139,9 @@
             background: rgba(90, 130, 230, 0.14);
             outline: none;
         }
-        /* Активная ссылка */
         nav.desktop-nav a.active {
             color: var(--accent-bright);
             font-weight: 600;
-            font-size: 0.88rem;
             background: rgba(90, 130, 230, 0.15);
         }
         nav.desktop-nav a.active:hover {
@@ -164,7 +159,6 @@
             background: var(--accent-bright);
             box-shadow: 0 4px 20px rgba(80, 130, 230, 0.5);
         }
-        /* Privacy link offset */
         nav.desktop-nav a.privacy-link {
             margin-left: 16px;
             color: var(--text-muted);
@@ -174,16 +168,6 @@
         nav.desktop-nav a.privacy-link:hover {
             color: #fff;
             background: rgba(90, 130, 230, 0.10);
-        }
-        nav.desktop-nav a.privacy-link.active {
-            color: var(--accent-bright);
-            font-weight: 600;
-            font-size: 0.88rem;
-            background: rgba(90, 130, 230, 0.15);
-        }
-        nav.desktop-nav a.privacy-link.active:hover {
-            background: rgba(90, 130, 230, 0.25);
-            color: #fff;
         }
 
         /* Mobile burger */
@@ -256,7 +240,6 @@
             font-size: 1.05rem;
             margin-top: 12px;
         }
-        /* Активная ссылка в мобильном меню */
         .mobile-menu a.active {
             color: var(--accent-bright);
             font-weight: 600;
@@ -272,102 +255,12 @@
             width: 100%;
         }
 
-        /* ---- Status banner ---- */
-        .status-banner {
+        .page-title {
             text-align: center;
-            margin-bottom: 36px;
-            position: relative;
+            margin-bottom: 32px;
         }
-        .status-banner .status-heading {
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            background: var(--green-bg);
-            border: 1.5px solid var(--green-border);
-            padding: 14px 28px;
-            border-radius: 40px;
-            box-shadow: 0 0 32px var(--green-glow), 0 0 60px rgba(74, 222, 128, 0.15);
-            animation: fadeInUp 0.6s ease forwards;
-        }
-        .status-dot {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: var(--green-status);
-            box-shadow: 0 0 16px var(--green-glow);
-            animation: pulse-green 2.2s infinite;
-            flex-shrink: 0;
-        }
-        @keyframes pulse-green {
-            0%,
-            100% {
-                box-shadow: 0 0 10px rgba(74, 222, 128, 0.45);
-            }
-            50% {
-                box-shadow: 0 0 26px rgba(74, 222, 128, 0.8), 0 0 44px rgba(74, 222, 128, 0.3);
-            }
-        }
-        .status-banner h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #fff;
-            letter-spacing: -0.01em;
-            margin: 0;
-            white-space: nowrap;
-        }
-        .status-banner .last-updated {
-            display: block;
-            margin-top: 10px;
-            font-size: 0.88rem;
-            color: var(--text-muted);
-        }
-
-        /* ---- Stats row ---- */
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 18px;
-            margin-bottom: 36px;
-        }
-        .stat-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-md);
-            padding: 24px 22px;
-            text-align: center;
-            box-shadow: var(--shadow-card);
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-        }
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: -30px;
-            right: -30px;
-            width: 90px;
-            height: 90px;
-            background: radial-gradient(circle, rgba(90, 140, 230, 0.15) 0%, transparent 70%);
-            border-radius: 50%;
-            pointer-events: none;
-        }
-        .stat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(100, 145, 225, 0.25);
-            border-color: var(--border-glow);
-        }
-        .stat-card .stat-label {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            margin-bottom: 8px;
-        }
-        .stat-card .stat-number {
-            font-size: 2.8rem;
+        .page-title h1 {
+            font-size: 2.2rem;
             font-weight: 800;
             letter-spacing: -0.02em;
             background: linear-gradient(135deg, #c0d4ff, #80a6f8, #b8ceff);
@@ -375,98 +268,31 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
             color: transparent;
-            line-height: 1.1;
+            line-height: 1.3;
+            margin-bottom: 8px;
         }
-
-        /* ---- Services grid ---- */
-        .services-section-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 16px;
-            letter-spacing: -0.01em;
-            text-align: center;
-        }
-        .services-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-            gap: 16px;
-            margin-bottom: 28px;
-        }
-        .service-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-md);
-            padding: 20px 18px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            box-shadow: var(--shadow-card);
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-        }
-        .service-card::before {
-            content: '';
-            position: absolute;
-            top: -20px;
-            right: -20px;
-            width: 70px;
-            height: 70px;
-            background: radial-gradient(circle, rgba(74, 222, 128, 0.12) 0%, transparent 70%);
-            border-radius: 50%;
-            pointer-events: none;
-            transition: var(--transition);
-        }
-        .service-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(74, 222, 128, 0.3);
-            border-color: var(--green-border);
-        }
-        .service-card:hover::before {
-            background: radial-gradient(circle, rgba(74, 222, 128, 0.22) 0%, transparent 70%);
-        }
-        .service-icon {
-            font-size: 2rem;
-            flex-shrink: 0;
-            width: 44px;
-            text-align: center;
-        }
-        .service-info {
-            flex: 1;
-            min-width: 0;
-        }
-        .service-name {
-            font-weight: 700;
-            font-size: 1rem;
-            color: #fff;
-            margin-bottom: 4px;
-            letter-spacing: -0.01em;
-        }
-        .service-status {
+        .status-badge {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            background: rgba(74, 222, 128, 0.12);
-            color: var(--green-status);
-            padding: 4px 12px;
-            border-radius: 16px;
-            font-size: 0.82rem;
+            gap: 8px;
+            background: var(--status-ok-bg);
+            border: 1px solid var(--status-ok-border);
+            padding: 8px 20px;
+            border-radius: 24px;
+            color: var(--status-ok);
             font-weight: 600;
-            border: 1px solid rgba(74, 222, 128, 0.2);
+            font-size: 1rem;
+            margin-top: 8px;
         }
-        .service-status .mini-dot {
-            width: 7px;
-            height: 7px;
+        .status-dot {
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            background: var(--green-status);
-            box-shadow: 0 0 8px var(--green-glow);
-            flex-shrink: 0;
+            background: var(--status-ok);
+            box-shadow: 0 0 10px var(--status-ok);
+            display: inline-block;
         }
 
-        /* ---- Info block (shared style) ---- */
         .info-block {
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
@@ -477,32 +303,125 @@
             margin-bottom: 24px;
             box-shadow: var(--shadow-card);
             transition: var(--transition);
-            text-align: center;
         }
         .info-block:hover {
             border-color: var(--border-glow);
         }
-        .info-block p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            line-height: 1.7;
-            margin-bottom: 6px;
+        .info-block h2 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #fff;
+            letter-spacing: -0.01em;
         }
-        .info-block p:last-child {
-            margin-bottom: 0;
+
+        .metrics-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
         }
-        .info-block .highlight {
-            color: var(--accent-bright);
-            font-weight: 600;
+        .metric-card {
+            flex: 1 1 200px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 20px 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            transition: var(--transition);
         }
-        .info-block a {
-            color: var(--accent-bright);
-            text-decoration: none;
+        .metric-card:hover {
+            border-color: var(--border-glow);
+            background: rgba(255, 255, 255, 0.06);
+        }
+        .metric-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1.2;
+        }
+        .metric-label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 4px;
             font-weight: 500;
         }
-        .info-block a:hover {
-            text-decoration: underline;
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 24px 20px;
+            transition: var(--transition);
+            box-shadow: var(--shadow-card);
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -40px;
+            right: -40px;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(90, 140, 230, 0.18) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(100, 145, 225, 0.25);
+            border-color: var(--border-glow);
+        }
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+            display: block;
+        }
+        .card h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
             color: #fff;
+        }
+        .card .status-text {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-weight: 600;
+            color: var(--status-ok);
+            font-size: 0.95rem;
+        }
+        .card .status-dot-sm {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--status-ok);
+            box-shadow: 0 0 8px var(--status-ok);
+            display: inline-block;
+        }
+
+        .update-note {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 16px;
         }
 
         /* ===== FOOTER ===== */
@@ -553,30 +472,19 @@
             .mobile-menu {
                 display: flex;
             }
-            .status-banner h1 {
-                font-size: 1.2rem;
+            .page-title h1 {
+                font-size: 1.7rem;
             }
-            .status-banner .status-heading {
-                padding: 12px 20px;
-                gap: 8px;
-            }
-            .status-dot {
-                width: 11px;
-                height: 11px;
-            }
-            .stat-card .stat-number {
-                font-size: 2.2rem;
-            }
-            .stats-row {
-                grid-template-columns: 1fr;
+            .cards-grid {
+                grid-template-columns: 1fr 1fr;
                 gap: 12px;
-            }
-            .services-grid {
-                grid-template-columns: 1fr;
-                gap: 10px;
             }
             .info-block {
                 padding: 20px 16px;
+            }
+            .metrics-row {
+                flex-direction: column;
+                gap: 12px;
             }
             footer {
                 font-size: 0.82rem;
@@ -585,15 +493,8 @@
         }
 
         @media (max-width: 400px) {
-            .status-banner h1 {
-                font-size: 1rem;
-            }
-            .status-banner .status-heading {
-                padding: 10px 16px;
-                gap: 6px;
-            }
-            .stat-card .stat-number {
-                font-size: 1.8rem;
+            .page-title h1 {
+                font-size: 1.5rem;
             }
             .logo-text {
                 font-size: 1.05rem;
@@ -602,6 +503,9 @@
                 width: 32px;
                 height: 32px;
                 font-size: 1.1rem;
+            }
+            .cards-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -619,22 +523,9 @@
         .animate-in {
             animation: fadeInUp 0.6s ease forwards;
         }
-        .delay-1 {
-            animation-delay: 0.1s;
-            opacity: 0;
-        }
-        .delay-2 {
-            animation-delay: 0.2s;
-            opacity: 0;
-        }
-        .delay-3 {
-            animation-delay: 0.3s;
-            opacity: 0;
-        }
-        .delay-4 {
-            animation-delay: 0.4s;
-            opacity: 0;
-        }
+        .delay-1 { animation-delay: 0.1s; opacity: 0; }
+        .delay-2 { animation-delay: 0.2s; opacity: 0; }
+        .delay-3 { animation-delay: 0.3s; opacity: 0; }
     </style>
 </head>
 <body>
@@ -678,78 +569,61 @@
 
     <!-- ===== MAIN CONTENT ===== -->
     <main>
-        <!-- Status banner: всё работает -->
-        <section class="status-banner animate-in">
-            <div class="status-heading">
-                <span class="status-dot" aria-hidden="true"></span>
-                <h1>Все работает нормально</h1>
-            </div>
-            <span class="last-updated">Последняя проверка: 11 августа 2026 г.</span>
-        </section>
-
-        <!-- Stats: пользователи -->
-        <div class="stats-row">
-            <div class="stat-card animate-in delay-1">
-                <div class="stat-label">👥 Пользователей попробовали Зоги</div>
-                <div class="stat-number">1 847</div>
-            </div>
-            <div class="stat-card animate-in delay-2">
-                <div class="stat-label">🔥 Активных пользователей</div>
-                <div class="stat-number">426</div>
+        <div class="page-title animate-in">
+            <h1>📊 Статус сервиса</h1>
+            <div class="status-badge">
+                <span class="status-dot"></span> Все работает нормально
             </div>
         </div>
 
-        <!-- Services status -->
-        <h2 class="services-section-title animate-in delay-2">Состояние сервисов</h2>
-        <div class="services-grid">
-            <div class="service-card animate-in delay-2">
-                <span class="service-icon">🌐</span>
-                <div class="service-info">
-                    <div class="service-name">Сайт</div>
-                    <span class="service-status">
-                        <span class="mini-dot"></span> Работает
-                    </span>
+        <!-- Метрики -->
+        <div class="info-block animate-in delay-1">
+            <h2>👥 Пользователи</h2>
+            <div class="metrics-row">
+                <div class="metric-card">
+                    <span class="metric-icon">🧑‍💻</span>
+                    <span class="metric-value" id="totalUsers">...</span>
+                    <span class="metric-label">Пользователей попробовали Зоги</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-icon">⚡</span>
+                    <span class="metric-value" id="activeUsers">...</span>
+                    <span class="metric-label">Активных пользователей</span>
                 </div>
             </div>
-            <div class="service-card animate-in delay-3">
-                <span class="service-icon">🤖</span>
-                <div class="service-info">
-                    <div class="service-name">Телеграм бот</div>
-                    <span class="service-status">
-                        <span class="mini-dot"></span> Работает
-                    </span>
-                </div>
-            </div>
-            <div class="service-card animate-in delay-3">
-                <span class="service-icon">📱</span>
-                <div class="service-info">
-                    <div class="service-name">Мини приложение</div>
-                    <span class="service-status">
-                        <span class="mini-dot"></span> Работает
-                    </span>
-                </div>
-            </div>
-            <div class="service-card animate-in delay-4">
-                <span class="service-icon">💻</span>
-                <div class="service-info">
-                    <div class="service-name">Веб версия</div>
-                    <span class="service-status">
-                        <span class="mini-dot"></span> Работает
-                    </span>
-                </div>
-            </div>
+            <div class="update-note">* Данные обновляются периодически</div>
         </div>
 
-        <!-- Дополнительная информация -->
-        <div class="info-block animate-in delay-4">
-            <p>
-                🧪 <span class="highlight">Зоги</span> находится на стадии бета-тестирования.
-                Если вы заметили неполадки, пожалуйста, сообщите об этом в
-                <a href="https://t.me/VoidWaifu" target="_blank" rel="noopener">@VoidWaifu</a>.
-            </p>
-            <p style="font-size:0.85rem;color:var(--text-muted);margin-top:8px;">
-                Страница обновляется вручную. Последняя проверка статуса всех сервисов: 11 августа 2026 г.
-            </p>
+        <!-- Статус компонентов -->
+        <div class="cards-grid animate-in delay-2">
+            <div class="card">
+                <span class="card-icon">🌐</span>
+                <h3>Сайт</h3>
+                <span class="status-text">
+                    <span class="status-dot-sm"></span> Работает
+                </span>
+            </div>
+            <div class="card">
+                <span class="card-icon">🤖</span>
+                <h3>Телеграм бот</h3>
+                <span class="status-text">
+                    <span class="status-dot-sm"></span> Работает
+                </span>
+            </div>
+            <div class="card">
+                <span class="card-icon">📱</span>
+                <h3>Мини приложение</h3>
+                <span class="status-text">
+                    <span class="status-dot-sm"></span> Работает
+                </span>
+            </div>
+            <div class="card">
+                <span class="card-icon">💻</span>
+                <h3>Веб версия</h3>
+                <span class="status-text">
+                    <span class="status-dot-sm"></span> Работает
+                </span>
+            </div>
         </div>
     </main>
 
