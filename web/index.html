@@ -485,7 +485,7 @@
                 document.getElementById('uploadArea').style.display = 'block';
 
                 document.getElementById('userName').textContent = user.first_name || 'User';
-                if (user.photo_url) {
+                if (user.photo_url && user.photo_url.startsWith('https://')) {
                     document.getElementById('userAvatar').src = user.photo_url;
                 }
 
