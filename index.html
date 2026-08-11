@@ -136,6 +136,13 @@
             background: rgba(90, 130, 230, 0.14);
             outline: none;
         }
+        /* Активная ссылка (текущая страница) */
+        nav.desktop-nav a.active {
+            color: #fff;
+            background: rgba(90, 130, 230, 0.25);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+            font-weight: 600;
+        }
         nav.desktop-nav a.nav-accent {
             background: var(--accent);
             color: #fff;
@@ -157,6 +164,12 @@
         nav.desktop-nav a.privacy-link:hover {
             color: #fff;
             background: rgba(90, 130, 230, 0.10);
+        }
+        nav.desktop-nav a.privacy-link.active {
+            color: #fff;
+            background: rgba(90, 130, 230, 0.25);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+            font-weight: 600;
         }
 
         /* Mobile burger */
@@ -228,6 +241,13 @@
             font-weight: 400;
             font-size: 1.05rem;
             margin-top: 12px;
+        }
+        /* Активная ссылка в мобильном меню */
+        .mobile-menu a.active {
+            color: #fff;
+            background: rgba(90, 130, 230, 0.25);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+            font-weight: 600;
         }
 
         /* ===== MAIN CONTENT ===== */
@@ -590,22 +610,10 @@
         .animate-in {
             animation: fadeInUp 0.6s ease forwards;
         }
-        .delay-1 {
-            animation-delay: 0.1s;
-            opacity: 0;
-        }
-        .delay-2 {
-            animation-delay: 0.2s;
-            opacity: 0;
-        }
-        .delay-3 {
-            animation-delay: 0.3s;
-            opacity: 0;
-        }
-        .delay-4 {
-            animation-delay: 0.4s;
-            opacity: 0;
-        }
+        .delay-1 { animation-delay: 0.1s; opacity: 0; }
+        .delay-2 { animation-delay: 0.2s; opacity: 0; }
+        .delay-3 { animation-delay: 0.3s; opacity: 0; }
+        .delay-4 { animation-delay: 0.4s; opacity: 0; }
     </style>
 </head>
 <body>
@@ -619,7 +627,7 @@
             </a>
 
             <!-- Desktop navigation -->
-            <nav class="desktop-nav">
+            <nav class="desktop-nav" id="desktopNav">
                 <a href="https://voidwaifu.github.io/z0g1/">Главная страница</a>
                 <a href="https://t.me/z0g1_bot">Телеграм бот</a>
                 <a href="https://voidwaifu.github.io/z0g1/web/">Веб версия</a>
@@ -753,7 +761,7 @@
             <span class="footer-divider">|</span>
             <span>
                 📢 Telegram-канал:
-                <a href="https://t.me/VoidWaifu" target="_blank" rel="noopener">@VoidWaifu</a>
+                <a href="https://t.me/VoidWaifu_" target="_blank" rel="noopener">@VoidWaifu</a>
             </span>
             <span class="footer-divider">|</span>
             <span>Актуальные новости, участие в разработке и обратная связь</span>
@@ -763,6 +771,31 @@
     <!-- ===== SCRIPTS ===== -->
     <script>
         (function() {
+            // --- Определение текущей страницы и подсветка активной ссылки ---
+            function setActiveLink() {
+                const currentUrl = window.location.href.replace(/\/+$/, ''); // убираем слеш в конце
+                const desktopLinks = document.querySelectorAll('#desktopNav a');
+                const mobileLinks = document.querySelectorAll('#mobileMenu a');
+
+                // Функция проверки совпадения
+                function markActive(links) {
+                    links.forEach(link => {
+                        const linkHref = link.getAttribute('href').replace(/\/+$/, '');
+                        if (linkHref === currentUrl) {
+                            link.classList.add('active');
+                        } else {
+                            link.classList.remove('active');
+                        }
+                    });
+                }
+
+                markActive(desktopLinks);
+                markActive(mobileLinks);
+            }
+
+            setActiveLink();
+
+            // --- Мобильное меню ---
             const burgerBtn = document.getElementById('burgerBtn');
             const mobileMenu = document.getElementById('mobileMenu');
             const body = document.body;
@@ -787,7 +820,7 @@
                 }
             });
 
-            // Close menu when a link inside mobile menu is clicked
+            // Закрытие меню при клике на ссылку
             const mobileLinks = mobileMenu.querySelectorAll('a');
             mobileLinks.forEach(function(link) {
                 link.addEventListener('click', function() {
@@ -795,21 +828,21 @@
                 });
             });
 
-            // Close menu on Escape key
+            // Закрытие по Escape
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape' && mobileMenu.classList.contains('active')) {
                     closeMenu();
                 }
             });
 
-            // Close menu if clicking outside (on overlay background)
+            // Закрытие по клику вне меню
             mobileMenu.addEventListener('click', function(e) {
                 if (e.target === mobileMenu) {
                     closeMenu();
                 }
             });
 
-            // Handle image error gracefully
+            // Обработка ошибки загрузки изображения
             const heroImg = document.querySelector('.hero-image-wrapper img');
             if (heroImg) {
                 heroImg.addEventListener('error', function() {
