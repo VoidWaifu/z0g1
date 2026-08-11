@@ -337,9 +337,15 @@
         }
 
         function naturalCompare(a, b) {
+            const norm = (s) => {
+                if (!s) return '';
+                return s.normalize('NFC').replace(/\s+/g, ' ').trim();
+            };
+            const aNorm = norm(a);
+            const bNorm = norm(b);
             const re = /(\d+|\D+)/g;
-            const aParts = a.match(re) || [];
-            const bParts = b.match(re) || [];
+            const aParts = aNorm.match(re) || [];
+            const bParts = bNorm.match(re) || [];
             const len = Math.max(aParts.length, bParts.length);
             for (let i = 0; i < len; i++) {
                 const aPart = aParts[i] || '';
