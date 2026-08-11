@@ -1156,6 +1156,11 @@
         });
         moveModalOverlay.addEventListener('click', e => { if (e.target===moveModalOverlay) closeMoveModal(); });
 
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            document.getElementById('popupOverlay').classList.add('active');
+        });
+
         window.addEventListener('DOMContentLoaded', () => {
             initTelegramLoginWidget();
         });
