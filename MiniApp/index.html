@@ -801,7 +801,6 @@
         });
         moveModalOverlay.addEventListener('click', e => { if (e.target===moveModalOverlay) closeMoveModal(); });
 
-        // Открытие меню по правому клику (ПКМ) в любом месте, как в веб-версии
         document.addEventListener('contextmenu', function(e) {
             e.preventDefault();
             document.getElementById('popupOverlay').classList.add('active');
