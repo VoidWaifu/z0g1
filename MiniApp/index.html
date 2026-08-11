@@ -336,42 +336,17 @@
             return `${ld}.${lm}.${ly} ${lh}:${lmin}`;
         }
 
-        function compareTokens(a, b) {
-            const aNorm = (a || '').normalize('NFC').replace(/\s+/g, ' ').trim();
-            const bNorm = (b || '').normalize('NFC').replace(/\s+/g, ' ').trim();
-            const re = /(\d+|\D+)/g;
-            const aParts = aNorm.match(re) || [];
-            const bParts = bNorm.match(re) || [];
-            const len = Math.max(aParts.length, bParts.length);
-            for (let i = 0; i < len; i++) {
-                const aPart = aParts[i] || '';
-                const bPart = bParts[i] || '';
-                if (aPart === '' && bPart !== '') return -1;
-                if (bPart === '' && aPart !== '') return 1;
-                const aIsNum = /^\d+$/.test(aPart);
-                const bIsNum = /^\d+$/.test(bPart);
-                if (aIsNum && bIsNum) {
-                    const diff = parseInt(aPart, 10) - parseInt(bPart, 10);
-                    if (diff !== 0) return diff;
-                } else if (aIsNum || bIsNum) {
-                    return aIsNum ? -1 : 1;
-                } else {
-                    const cmp = aPart.localeCompare(bPart, 'ru', { sensitivity: 'base' });
-                    if (cmp !== 0) return cmp;
-                }
-            }
-            return 0;
-        }
+        const collator = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' });
 
-        function compareByWords(a, b) {
-            const aNorm = (a || '').normalize('NFC').replace(/\s+/g, ' ').trim();
-            const bNorm = (b || '').normalize('NFC').replace(/\s+/g, ' ').trim();
-            if (aNorm === bNorm) return 0;
-            const aWords = aNorm.split(' ');
-            const bWords = bNorm.split(' ');
+        function smartCompare(a, b) {
+            const aClean = (a || '').trim().replace(/\s+/g, ' ');
+            const bClean = (b || '').trim().replace(/\s+/g, ' ');
+            if (aClean === bClean) return 0;
+            const aWords = aClean.split(' ');
+            const bWords = bClean.split(' ');
             const minLen = Math.min(aWords.length, bWords.length);
             for (let i = 0; i < minLen; i++) {
-                const cmp = compareTokens(aWords[i], bWords[i]);
+                const cmp = collator.compare(aWords[i], bWords[i]);
                 if (cmp !== 0) return cmp;
             }
             return aWords.length - bWords.length;
@@ -416,14 +391,13 @@
 
         function sortContents(folders, files) {
             const cmp = (a,b) => {
-                let va, vb;
                 if (sortKey === 'name') {
-                    va = a.name||''; vb = b.name||'';
-                    return compareByWords(va, vb);
+                    return smartCompare(a.name||'', b.name||'');
                 } else if (sortKey === 'size') {
-                    va = a.size||0; vb = b.size||0; return va - vb;
+                    return (a.size||0) - (b.size||0);
                 } else if (sortKey === 'date') {
-                    va = a.date||''; vb = b.date||''; return va < vb ? -1 : va > vb ? 1 : 0;
+                    const va = a.date||'', vb = b.date||'';
+                    return va < vb ? -1 : va > vb ? 1 : 0;
                 }
                 return 0;
             };
@@ -778,7 +752,7 @@
                     moveContent.innerHTML = '<div class="empty-state"><div class="empty-text">Папок нет</div></div>';
                     return;
                 }
-                const sortedFolders = d.folders.sort((a,b) => compareByWords(a.name||'', b.name||''));
+                const sortedFolders = d.folders.sort((a,b) => smartCompare(a.name||'', b.name||''));
                 sortedFolders.forEach(f => {
                     const div = document.createElement('div');
                     div.className = 'item folder-item';
