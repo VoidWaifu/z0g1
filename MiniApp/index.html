@@ -354,12 +354,8 @@
                 } else if (aIsNum || bIsNum) {
                     return aIsNum ? -1 : 1;
                 } else {
-                    // Вместо localeCompare – простое регистронезависимое сравнение
-                    const lowerA = aPart.toLowerCase();
-                    const lowerB = bPart.toLowerCase();
-                    if (lowerA < lowerB) return -1;
-                    if (lowerA > lowerB) return 1;
-                    // если равны – продолжаем цикл
+                    const cmp = aPart.localeCompare(bPart, 'ru', { sensitivity: 'base' });
+                    if (cmp !== 0) return cmp;
                 }
             }
             return 0;
