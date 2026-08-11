@@ -46,4 +46,4 @@ Telegram позволяет хранить файлы без ограничен�
 
 ## Контакты
 
-Сообщения: [@VoidWaifu](https://t.me/VoidWaifu?direct).
+Сообщения: [@VoidWaifu](https://t.me/VoidWaifu?direct)
