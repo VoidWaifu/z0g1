@@ -336,12 +336,19 @@
             return `${ld}.${lm}.${ly} ${lh}:${lmin}`;
         }
 
-        // Надёжная естественная сортировка с поддержкой чисел и русской локали
+        // Надёжное натуральное сравнение имён на основе Intl.Collator.
+        // Опция numeric:true заставляет ЛЮБЫЕ числовые подстроки (не только первую)
+        // сравниваться по числовому значению, а не посимвольно, поэтому
+        // "Форс мажоры 2 (2D)" корректно встаёт между "...1 (3D)" и "...2 (3D)".
+        // normalize('NFKC') приводит "похожие" варианты символов (например,
+        // полноширинные цифры или разные виды пробелов) к единому виду, а
+        // replace(/\s+/g,' ') убирает влияние неразрывных/двойных пробелов,
+        // которые визуально незаметны, но ломают посимвольное сравнение.
+        const nameCollator = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' });
         function naturalCompare(a, b) {
-            return String(a || '').localeCompare(String(b || ''), 'ru', {
-                numeric: true,
-                sensitivity: 'base'
-            });
+            const na = (a || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
+            const nb = (b || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
+            return nameCollator.compare(na, nb);
         }
 
         async function apiCall(endpoint, body) {
@@ -382,26 +389,20 @@
         updateSortButtons();
 
         function sortContents(folders, files) {
-            const cmp = (a, b) => {
+            const cmp = (a,b) => {
                 let va, vb;
                 if (sortKey === 'name') {
-                    // Используем отображаемое имя (custom_name приоритетнее)
-                    va = (a.custom_name || a.name || '');
-                    vb = (b.custom_name || b.name || '');
+                    va = a.name||''; vb = b.name||'';
                     return naturalCompare(va, vb);
                 } else if (sortKey === 'size') {
-                    va = a.size || 0;
-                    vb = b.size || 0;
-                    return va - vb;
+                    va = a.size||0; vb = b.size||0; return va - vb;
                 } else if (sortKey === 'date') {
-                    va = a.date || '';
-                    vb = b.date || '';
-                    return va < vb ? -1 : va > vb ? 1 : 0;
+                    va = a.date||''; vb = b.date||''; return va < vb ? -1 : va > vb ? 1 : 0;
                 }
                 return 0;
             };
-            const sortedFolders = [...folders].sort((a, b) => sortDir === 'asc' ? cmp(a, b) : cmp(b, a));
-            const sortedFiles   = [...files].sort((a, b) => sortDir === 'asc' ? cmp(a, b) : cmp(b, a));
+            const sortedFolders = [...folders].sort((a,b) => sortDir==='asc'?cmp(a,b):cmp(b,a));
+            const sortedFiles = [...files].sort((a,b) => sortDir==='asc'?cmp(a,b):cmp(b,a));
             return { folders: sortedFolders, files: sortedFiles };
         }
 
