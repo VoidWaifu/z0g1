@@ -336,19 +336,29 @@
             return `${ld}.${lm}.${ly} ${lh}:${lmin}`;
         }
 
-        // Надёжное натуральное сравнение имён на основе Intl.Collator.
-        // Опция numeric:true заставляет ЛЮБЫЕ числовые подстроки (не только первую)
-        // сравниваться по числовому значению, а не посимвольно, поэтому
-        // "Форс мажоры 2 (2D)" корректно встаёт между "...1 (3D)" и "...2 (3D)".
-        // normalize('NFKC') приводит "похожие" варианты символов (например,
-        // полноширинные цифры или разные виды пробелов) к единому виду, а
-        // replace(/\s+/g,' ') убирает влияние неразрывных/двойных пробелов,
-        // которые визуально незаметны, но ломают посимвольное сравнение.
-        const nameCollator = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' });
         function naturalCompare(a, b) {
-            const na = (a || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
-            const nb = (b || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
-            return nameCollator.compare(na, nb);
+            const re = /(\d+|\D+)/g;
+            const aParts = a.match(re) || [];
+            const bParts = b.match(re) || [];
+            const len = Math.max(aParts.length, bParts.length);
+            for (let i = 0; i < len; i++) {
+                const aPart = aParts[i] || '';
+                const bPart = bParts[i] || '';
+                if (aPart === '' && bPart !== '') return -1;
+                if (bPart === '' && aPart !== '') return 1;
+                const aIsNum = /^\d+$/.test(aPart);
+                const bIsNum = /^\d+$/.test(bPart);
+                if (aIsNum && bIsNum) {
+                    const diff = parseInt(aPart, 10) - parseInt(bPart, 10);
+                    if (diff !== 0) return diff;
+                } else if (aIsNum || bIsNum) {
+                    return aIsNum ? -1 : 1;
+                } else {
+                    const cmp = aPart.localeCompare(bPart, 'ru', { sensitivity: 'base' });
+                    if (cmp !== 0) return cmp;
+                }
+            }
+            return 0;
         }
 
         async function apiCall(endpoint, body) {
