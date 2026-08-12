@@ -58,7 +58,6 @@
             flex-direction: column;
         }
 
-        /* ===== HEADER ===== */
         header {
             position: sticky;
             top: 0;
@@ -106,7 +105,6 @@
             white-space: nowrap;
         }
 
-        /* Desktop nav */
         nav.desktop-nav {
             display: flex;
             align-items: center;
@@ -143,10 +141,9 @@
             background: var(--accent-bright);
             box-shadow: 0 4px 20px rgba(80, 130, 230, 0.5);
         }
-        /* Privacy link offset */
         nav.desktop-nav a.privacy-link {
             margin-left: 16px;
-            color: var(--accent-bright); /* выделена как активная */
+            color: var(--accent-bright);
             font-weight: 600;
             font-size: 0.88rem;
             background: rgba(90, 130, 230, 0.15);
@@ -156,7 +153,6 @@
             color: #fff;
         }
 
-        /* Mobile burger */
         .burger-btn {
             display: none;
             background: none;
@@ -177,7 +173,6 @@
             display: block;
         }
 
-        /* Mobile menu overlay */
         .mobile-menu {
             display: none;
             position: fixed;
@@ -227,7 +222,6 @@
             background: rgba(90, 130, 230, 0.1);
         }
 
-        /* ===== MAIN CONTENT ===== */
         main {
             flex: 1;
             max-width: 900px;
@@ -346,7 +340,6 @@
             color: #fff;
         }
 
-        /* ===== FOOTER ===== */
         footer {
             background: var(--bg-primary);
             border-top: 1px solid var(--glass-border);
@@ -380,7 +373,6 @@
             opacity: 0.5;
         }
 
-        /* ===== RESPONSIVE ===== */
         @media (max-width: 768px) {
             .header-inner {
                 height: 56px;
@@ -423,7 +415,6 @@
             }
         }
 
-        /* Animations */
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(24px); }
             to   { opacity: 1; transform: translateY(0); }
@@ -435,7 +426,6 @@
 </head>
 <body>
 
-    <!-- ===== HEADER ===== -->
     <header>
         <div class="header-inner">
             <a href="https://voidwaifu.github.io/z0g1/" class="logo-area" title="Зоги — главная">
@@ -443,7 +433,6 @@
                 <span class="logo-text">Зоги</span>
             </a>
 
-            <!-- Desktop navigation -->
             <nav class="desktop-nav">
                 <a href="https://voidwaifu.github.io/z0g1/">Главная страница</a>
                 <a href="https://t.me/z0g1_bot">Телеграм бот</a>
@@ -452,7 +441,6 @@
                 <a href="https://voidwaifu.github.io/z0g1/privacy/" class="privacy-link">Политика конфиденциальности</a>
             </nav>
 
-            <!-- Burger button (mobile) -->
             <button class="burger-btn" id="burgerBtn" aria-label="Открыть меню" aria-expanded="false">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="4" y1="6" x2="20" y2="6"></line>
@@ -463,7 +451,6 @@
         </div>
     </header>
 
-    <!-- Mobile menu -->
     <div class="mobile-menu" id="mobileMenu">
         <a href="https://voidwaifu.github.io/z0g1/">Главная страница</a>
         <a href="https://t.me/z0g1_bot">Телеграм бот</a>
@@ -472,7 +459,6 @@
         <a href="https://voidwaifu.github.io/z0g1/privacy/" class="privacy-link-mob">Политика конфиденциальности</a>
     </div>
 
-    <!-- ===== MAIN CONTENT ===== -->
     <main>
         <div class="page-title animate-in">
             <h1>🔒 Политика конфиденциальности<br>бота Зоги</h1>
@@ -575,7 +561,6 @@
         </div>
     </main>
 
-    <!-- ===== FOOTER ===== -->
     <footer>
         <div class="footer-inner">
             <span>© <a href="https://voidwaifu.github.io/" target="_blank" rel="noopener">VoidWaifu</a> — автор проекта Зоги</span>
@@ -586,10 +571,14 @@
             </span>
             <span class="footer-divider">|</span>
             <span>Актуальные новости, участие в разработке и обратная связь</span>
+            <span class="footer-divider">|</span>
+            <span>
+                💻 Исходный код:
+                <a href="https://github.com/VoidWaifu/z0g1" target="_blank" rel="noopener">GitHub</a>
+            </span>
         </div>
     </footer>
 
-    <!-- ===== SCRIPTS ===== -->
     <script>
         (function() {
             const burgerBtn = document.getElementById('burgerBtn');
@@ -616,7 +605,6 @@
                 }
             });
 
-            // Close menu when a link inside mobile menu is clicked
             const mobileLinks = mobileMenu.querySelectorAll('a');
             mobileLinks.forEach(function(link) {
                 link.addEventListener('click', function() {
@@ -624,14 +612,12 @@
                 });
             });
 
-            // Close menu on Escape key
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape' && mobileMenu.classList.contains('active')) {
                     closeMenu();
                 }
             });
 
-            // Close menu if clicking outside (on overlay background)
             mobileMenu.addEventListener('click', function(e) {
                 if (e.target === mobileMenu) {
                     closeMenu();
