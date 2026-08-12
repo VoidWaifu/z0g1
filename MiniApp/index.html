@@ -217,6 +217,10 @@
         .prop-row { display: flex; padding: 8px 0; border-bottom: 0.5px solid rgba(255,255,255,0.08); gap: 12px; }
         .prop-label { width: 130px; color: var(--tg-theme-hint-color); font-size: 15px; flex-shrink: 0; }
         .prop-value { flex: 1; font-size: 15px; word-break: break-word; }
+        .prop-path-home {
+            display: inline-flex; align-items: center; vertical-align: middle; margin-right: 4px;
+        }
+        .prop-path-home svg { width: 18px; height: 18px; fill: var(--tg-theme-hint-color); }
     </style>
 </head>
 <body>
@@ -324,6 +328,7 @@
         const folderIconSVG = `<svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         const fileIconSVG = `<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z M14 2v6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         const infoIconSVG = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2" fill="none"/><line x1="12" y1="16" x2="12" y2="12" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/></svg>`;
+        const homeIconSVG = `<svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>`;
 
         function escapeHtml(text) { const map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}; return text.replace(/[&<>"']/g, m=>map[m]); }
         function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._timeout); t._timeout = setTimeout(() => t.classList.remove('show'), 3000); }
@@ -565,7 +570,7 @@
                 if (i > 0) html += '<span class="separator">›</span>';
                 const isHome = crumb.id === 0;
                 const cls = 'breadcrumb-item' + (isHome ? ' home' : '');
-                const label = isHome ? `<svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>` : escapeHtml(crumb.name);
+                const label = isHome ? homeIconSVG : escapeHtml(crumb.name);
                 html += `<span class="${cls}" data-folder-id="${crumb.id}">${label}</span>`;
             });
             breadcrumbsEl.innerHTML = html;
@@ -633,7 +638,7 @@
 
         async function showProperties(type, id) {
             propertiesModal.classList.add('active');
-            propPath.textContent = '—';
+            propPath.innerHTML = '—';
             propRowPath.style.display = 'none';
             propName.textContent = '—';
             propCustomName.textContent = '—';
@@ -654,12 +659,14 @@
                 if (type === 'folder') {
                     propContains.textContent = `${data.file_text}, ${data.folder_text}`;
                     if (data.path) {
-                        propPath.textContent = data.path;
+                        const displayPath = escapeHtml(data.path);
+                        propPath.innerHTML = `<span class="prop-path-home">${homeIconSVG}</span>${displayPath}`;
                         propRowPath.style.display = 'flex';
                     }
                 } else {
                     if (data.path) {
-                        propPath.textContent = data.path;
+                        const displayPath = escapeHtml(data.path);
+                        propPath.innerHTML = `<span class="prop-path-home">${homeIconSVG}</span>${displayPath}`;
                         propRowPath.style.display = 'flex';
                     }
                 }
@@ -741,7 +748,7 @@
                 if (i > 0) html += '<span class="separator">›</span>';
                 const isHome = crumb.id === 0;
                 const cls = 'breadcrumb-item' + (isHome ? ' home' : '');
-                const label = isHome ? `<svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>` : escapeHtml(crumb.name);
+                const label = isHome ? homeIconSVG : escapeHtml(crumb.name);
                 html += `<span class="${cls}" data-folder-id="${crumb.id}">${label}</span>`;
             });
             moveBreadcrumbs.innerHTML = html;
