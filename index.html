@@ -58,7 +58,6 @@
             flex-direction: column;
         }
 
-        /* ===== HEADER ===== */
         header {
             position: sticky;
             top: 0;
@@ -106,7 +105,6 @@
             white-space: nowrap;
         }
 
-        /* Desktop nav */
         nav.desktop-nav {
             display: flex;
             align-items: center;
@@ -132,7 +130,6 @@
             background: rgba(90, 130, 230, 0.14);
             outline: none;
         }
-        /* Активная ссылка — точно как на странице политики */
         nav.desktop-nav a.active {
             color: var(--accent-bright);
             font-weight: 600;
@@ -154,7 +151,6 @@
             background: var(--accent-bright);
             box-shadow: 0 4px 20px rgba(80, 130, 230, 0.5);
         }
-        /* Privacy link offset */
         nav.desktop-nav a.privacy-link {
             margin-left: 16px;
             color: var(--text-muted);
@@ -176,7 +172,6 @@
             color: #fff;
         }
 
-        /* Mobile burger */
         .burger-btn {
             display: none;
             background: none;
@@ -197,7 +192,6 @@
             display: block;
         }
 
-        /* Mobile menu overlay */
         .mobile-menu {
             display: none;
             position: fixed;
@@ -246,14 +240,12 @@
             font-size: 1.05rem;
             margin-top: 12px;
         }
-        /* Активная ссылка в мобильном меню */
         .mobile-menu a.active {
             color: var(--accent-bright);
             font-weight: 600;
             background: rgba(90, 130, 230, 0.1);
         }
 
-        /* ===== MAIN CONTENT ===== */
         main {
             flex: 1;
             max-width: 1100px;
@@ -262,7 +254,6 @@
             width: 100%;
         }
 
-        /* Hero section */
         .hero {
             text-align: center;
             margin-bottom: 50px;
@@ -292,7 +283,6 @@
             display: block;
             border-radius: var(--radius-lg);
         }
-        /* overlay text on image */
         .hero-image-overlay {
             position: absolute;
             bottom: 0;
@@ -349,7 +339,6 @@
             margin-bottom: 8px;
         }
 
-        /* Cards section */
         .cards-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -401,7 +390,6 @@
             line-height: 1.55;
         }
 
-        /* Info block */
         .info-block {
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
@@ -447,7 +435,6 @@
             font-style: italic;
         }
 
-        /* CTA buttons */
         .cta-row {
             display: flex;
             gap: 14px;
@@ -492,7 +479,6 @@
             transform: translateY(-2px);
         }
 
-        /* ===== FOOTER ===== */
         footer {
             background: var(--bg-primary);
             border-top: 1px solid var(--glass-border);
@@ -526,7 +512,6 @@
             opacity: 0.5;
         }
 
-        /* ===== RESPONSIVE ===== */
         @media (max-width: 768px) {
             .header-inner {
                 height: 56px;
@@ -599,7 +584,6 @@
             }
         }
 
-        /* Animations */
         @keyframes fadeInUp {
             from {
                 opacity: 0;
@@ -621,7 +605,6 @@
 </head>
 <body>
 
-    <!-- ===== HEADER ===== -->
     <header>
         <div class="header-inner">
             <a href="https://voidwaifu.github.io/z0g1/" class="logo-area" title="Зоги — главная">
@@ -629,7 +612,6 @@
                 <span class="logo-text">Зоги</span>
             </a>
 
-            <!-- Desktop navigation -->
             <nav class="desktop-nav" id="desktopNav">
                 <a href="https://voidwaifu.github.io/z0g1/">Главная страница</a>
                 <a href="https://t.me/z0g1_bot">Телеграм бот</a>
@@ -638,7 +620,6 @@
                 <a href="https://voidwaifu.github.io/z0g1/privacy/" class="privacy-link">Политика конфиденциальности</a>
             </nav>
 
-            <!-- Burger button (mobile) -->
             <button class="burger-btn" id="burgerBtn" aria-label="Открыть меню" aria-expanded="false">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="4" y1="6" x2="20" y2="6"></line>
@@ -649,7 +630,6 @@
         </div>
     </header>
 
-    <!-- Mobile menu -->
     <div class="mobile-menu" id="mobileMenu">
         <a href="https://voidwaifu.github.io/z0g1/">Главная страница</a>
         <a href="https://t.me/z0g1_bot">Телеграм бот</a>
@@ -658,9 +638,7 @@
         <a href="https://voidwaifu.github.io/z0g1/privacy/" class="privacy-link-mob">Политика конфиденциальности</a>
     </div>
 
-    <!-- ===== MAIN CONTENT ===== -->
     <main>
-        <!-- Hero -->
         <section class="hero animate-in">
             <span class="tagline">Бесплатный Telegram-бот для хранения файлов</span>
             <h1>Зоги — ваше облако<br>в Telegram</h1>
@@ -669,7 +647,6 @@
                 Создавайте папки, переименовывайте, перемещайте и скачивайте файлы когда угодно.
             </p>
 
-            <!-- Центральное изображение 16:9 -->
             <div class="hero-image-wrapper animate-in delay-1">
                 <img
                 src="/z0g1/icons/MainPage.jpg"
@@ -683,7 +660,6 @@
                 </div>
             </div>
 
-            <!-- CTA buttons -->
             <div class="cta-row animate-in delay-2">
                 <a href="https://t.me/z0g1_bot" class="btn btn-primary">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.87 4.326-2.96-.924c-.643-.204-.657-.643.136-.953l11.566-4.458c.538-.196 1.006.128.832.938z"/></svg>
@@ -696,7 +672,6 @@
             </div>
         </section>
 
-        <!-- Cards: возможности -->
         <section class="cards-grid">
             <div class="card animate-in delay-2">
                 <span class="card-icon">📁</span>
@@ -715,7 +690,6 @@
             </div>
         </section>
 
-        <!-- Info block: описание -->
         <div class="info-block animate-in delay-2">
             <h2>📦 Что такое Зоги?</h2>
             <p>
@@ -733,7 +707,6 @@
             </div>
         </div>
 
-        <!-- Info block: приватность -->
         <div class="info-block animate-in delay-3">
             <h2>🛡️ Как устроена приватность</h2>
             <p>
@@ -746,7 +719,6 @@
             </p>
         </div>
 
-        <!-- CTA повтор -->
         <div class="cta-row animate-in delay-4">
             <a href="https://t.me/z0g1_bot" class="btn btn-primary">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.87 4.326-2.96-.924c-.643-.204-.657-.643.136-.953l11.566-4.458c.538-.196 1.006.128.832.938z"/></svg>
@@ -756,7 +728,6 @@
         </div>
     </main>
 
-    <!-- ===== FOOTER ===== -->
     <footer>
         <div class="footer-inner">
             <span>© <a href="https://voidwaifu.github.io/" target="_blank" rel="noopener">VoidWaifu</a> — автор проекта Зоги</span>
@@ -767,13 +738,16 @@
             </span>
             <span class="footer-divider">|</span>
             <span>Актуальные новости, участие в разработке и обратная связь</span>
+            <span class="footer-divider">|</span>
+            <span>
+                💻 Исходный код:
+                <a href="https://github.com/VoidWaifu/z0g1" target="_blank" rel="noopener">GitHub</a>
+            </span>
         </div>
     </footer>
 
-    <!-- ===== SCRIPTS ===== -->
     <script>
         (function() {
-            // --- Определение текущей страницы и подсветка активной ссылки ---
             function setActiveLink() {
                 const currentUrl = window.location.href.replace(/\/+$/, '');
                 const desktopLinks = document.querySelectorAll('#desktopNav a');
@@ -794,7 +768,6 @@
 
             setActiveLink();
 
-            // --- Мобильное меню ---
             const burgerBtn = document.getElementById('burgerBtn');
             const mobileMenu = document.getElementById('mobileMenu');
             const body = document.body;
@@ -838,7 +811,6 @@
                 }
             });
 
-            // Обработка ошибки загрузки изображения
             const heroImg = document.querySelector('.hero-image-wrapper img');
             if (heroImg) {
                 heroImg.addEventListener('error', function() {
