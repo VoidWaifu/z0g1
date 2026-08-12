@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Запрет кеширования страницы -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -337,12 +336,16 @@
             <span>📢 Telegram-канал: <a href="https://t.me/VoidWaifu" target="_blank" rel="noopener">@VoidWaifu</a></span>
             <span class="footer-divider">|</span>
             <span>Актуальные новости, участие в разработке и обратная связь</span>
+            <span class="footer-divider">|</span>
+            <span>
+                💻 Исходный код:
+                <a href="https://github.com/VoidWaifu/z0g1" target="_blank" rel="noopener">GitHub</a>
+            </span>
         </div>
     </footer>
 
     <script>
         (function() {
-            // ---------- Навигация ----------
             function setActiveLink() {
                 const currentUrl = window.location.href.replace(/\/+$/, '');
                 const desktopLinks = document.querySelectorAll('#desktopNav a');
@@ -369,7 +372,6 @@
             document.addEventListener('keydown', e => { if (e.key === 'Escape' && mobileMenu.classList.contains('active')) closeMenu(); });
             mobileMenu.addEventListener('click', e => { if (e.target === mobileMenu) closeMenu(); });
 
-            // ---------- Данные ----------
             const API_BASE = 'https://z0g1.wispbyte.app';
             const mainBadge = document.getElementById('mainStatusBadge');
             const mainDot = document.getElementById('mainStatusDot');
@@ -444,7 +446,6 @@
 
             async function loadStatus() {
                 try {
-                    // Добавляем случайный параметр для предотвращения кеширования
                     const url = API_BASE + '/api/status?_t=' + Date.now();
                     const response = await fetch(url, { cache: 'no-store' });
                     if (!response.ok) throw new Error('HTTP ' + response.status);
@@ -460,9 +461,7 @@
                 }
             }
 
-            // Первая загрузка
             loadStatus();
-            // Обновление каждые 5 минут
             setInterval(loadStatus, 5 * 60 * 1000);
         })();
     </script>
