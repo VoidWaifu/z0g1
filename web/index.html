@@ -544,7 +544,7 @@
         let ws;
         function initWebSocket() {
             if (ws) ws.close();
-            const wsUrl = `wss://z0g1.wispbyte.app/ws?token=${encodeURIComponent(authToken)}`;
+            const wsUrl = `wss://z0g1.voidwaifu.workers.dev/ws?token=${encodeURIComponent(authToken)}`;
             ws = new WebSocket(wsUrl);
             ws.onmessage = (event) => {
                 try {
