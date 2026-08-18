@@ -314,7 +314,7 @@
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        const API_BASE = 'https://z0g1.wispbyte.app';
+        const API_BASE = 'https://z0g1.voidwaifu.workers.dev';
         const tg = window.Telegram.WebApp; tg.ready();
         const initData = tg.initData || "";
         let currentFolderId = 0;
@@ -371,7 +371,7 @@
         let ws;
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//z0g1.wispbyte.app/ws?initData=${encodeURIComponent(initData)}`;
+            const wsUrl = `${protocol}//z0g1.voidwaifu.workers.dev/ws?initData=${encodeURIComponent(initData)}`;
             ws = new WebSocket(wsUrl);
             ws.onmessage = (event) => { try { const msg = JSON.parse(event.data); if (msg.type) loadContents(); } catch(e) {} };
             ws.onclose = () => { setTimeout(connectWebSocket, 3000); };
