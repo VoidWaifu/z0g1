@@ -371,7 +371,7 @@
         let ws;
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//z0g1.voidwaifu.workers.dev/ws?initData=${encodeURIComponent(initData)}`;
+            const wsUrl = `${protocol}//z0g1.voidwaifu.workers.dev/ws?initData=${initData}`;
             ws = new WebSocket(wsUrl);
             ws.onmessage = (event) => { try { const msg = JSON.parse(event.data); if (msg.type) loadContents(); } catch(e) {} };
             ws.onclose = () => { setTimeout(connectWebSocket, 3000); };
