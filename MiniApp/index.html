@@ -135,6 +135,16 @@
         }
         .empty-icon { font-size: 48px; margin-bottom: 16px; }
         .empty-text { font-size: 16px; }
+        .loading-state {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100%; width: 100%; color: var(--tg-theme-hint-color);
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 3px solid var(--tg-theme-secondary-bg-color);
+            border-top: 3px solid var(--tg-theme-button-color); border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 16px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .toast {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: rgba(0,0,0,0.8); color: #fff; padding: 12px 20px; border-radius: 8px;
@@ -230,7 +240,12 @@
         <button class="sort-btn" data-sort="size-asc">Размер <span class="arrow">↑</span></button>
         <button class="sort-btn" data-sort="date-desc">Дата <span class="arrow">↓</span></button>
     </div>
-    <div class="content" id="content"></div>
+    <div class="content" id="content">
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <div class="empty-text">Загрузка...</div>
+        </div>
+    </div>
     <div class="toast" id="toast"></div>
 
     <div class="popup-overlay" id="popupOverlay">
@@ -314,20 +329,58 @@
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
+        // ============================================================
+        // Конфигурация
+        // ============================================================
         const API_BASE = 'https://z0g1.voidwaifu.workers.dev';
-        const tg = window.Telegram.WebApp; tg.ready();
-        const initData = tg.initData || "";
+        const tg = window.Telegram.WebApp;
+        
+        // ============================================================
+        // Переменные состояния
+        // ============================================================
         let currentFolderId = 0;
         const selectedItems = new Set();
         let sortKey = 'name', sortDir = 'asc';
+        let currentRawFolders = [], currentRawFiles = [];
+        let currentBreadcrumbs = [];
+        let currentParentId = 0;
+        let isLoading = false;
+        let initDataReady = false;
+        let initData = '';
+        let currentRequestAbortController = null;
+        let isFirstLoad = true;
 
+        // ============================================================
+        // Иконки
+        // ============================================================
         const folderIconSVG = `<svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         const fileIconSVG = `<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z M14 2v6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         const infoIconSVG = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2" fill="none"/><line x1="12" y1="16" x2="12" y2="12" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/></svg>`;
 
-        function escapeHtml(text) { const map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}; return text.replace(/[&<>"']/g, m=>map[m]); }
-        function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._timeout); t._timeout = setTimeout(() => t.classList.remove('show'), 3000); }
-        function formatSize(bytes) { if (!bytes || bytes===0) return '—'; const u = ['B','KB','MB','GB']; let i = 0, s = bytes; while (s>=1024 && i<u.length-1){ s/=1024; i++; } return s.toFixed(1)+' '+u[i]; }
+        // ============================================================
+        // Вспомогательные функции
+        // ============================================================
+        function escapeHtml(text) { 
+            const map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}; 
+            return text.replace(/[&<>"']/g, m=>map[m]); 
+        }
+        
+        function showToast(msg) { 
+            const t = document.getElementById('toast'); 
+            t.textContent = msg; 
+            t.classList.add('show'); 
+            clearTimeout(t._timeout); 
+            t._timeout = setTimeout(() => t.classList.remove('show'), 3000); 
+        }
+        
+        function formatSize(bytes) { 
+            if (!bytes || bytes===0) return '—'; 
+            const u = ['B','KB','MB','GB']; 
+            let i = 0, s = bytes; 
+            while (s>=1024 && i<u.length-1){ s/=1024; i++; } 
+            return s.toFixed(1)+' '+u[i]; 
+        }
+        
         function formatDateUTC(dateStr) {
             if (!dateStr || dateStr.length<16) return '';
             const y=dateStr.substring(0,4), m=dateStr.substring(5,7), d=dateStr.substring(8,10), h=dateStr.substring(11,13), min=dateStr.substring(14,16);
@@ -362,7 +415,52 @@
             return 0;
         }
 
-        let currentRequestAbortController = null;
+        // ============================================================
+        // API вызовы с кэшированием initData
+        // ============================================================
+        function getInitData() {
+            // Если initData еще не получена, пробуем получить сейчас
+            if (!initDataReady) {
+                const data = tg.initData || '';
+                if (data) {
+                    initData = data;
+                    initDataReady = true;
+                    tg.ready();
+                }
+            }
+            return initData;
+        }
+
+        // Функция ожидания initData
+        function waitForInitData(maxWait = 500) {
+            return new Promise((resolve) => {
+                if (initDataReady && initData) {
+                    resolve(initData);
+                    return;
+                }
+                
+                const startTime = Date.now();
+                const checkInterval = setInterval(() => {
+                    const data = tg.initData || '';
+                    if (data) {
+                        initData = data;
+                        initDataReady = true;
+                        tg.ready();
+                        clearInterval(checkInterval);
+                        resolve(initData);
+                        return;
+                    }
+                    
+                    if (Date.now() - startTime > maxWait) {
+                        clearInterval(checkInterval);
+                        // Если initData все еще нет, используем то что есть (может быть пустая строка)
+                        initData = tg.initData || '';
+                        initDataReady = true;
+                        resolve(initData);
+                    }
+                }, 10);
+            });
+        }
 
         async function apiCall(endpoint, body) {
             // Отменяем предыдущий незавершенный запрос
@@ -373,11 +471,14 @@
             currentRequestAbortController = new AbortController();
             const signal = currentRequestAbortController.signal;
             
+            // Ждем initData перед отправкой запроса
+            const initDataStr = await waitForInitData(300);
+            
             try {
                 const resp = await fetch(API_BASE + endpoint, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({initData, ...body}),
+                    body: JSON.stringify({initData: initDataStr, ...body}),
                     signal: signal,
                 });
                 
@@ -392,7 +493,6 @@
                 return await resp.json();
             } catch (e) {
                 if (e.name === 'AbortError') {
-                    // Запрос был отменен - не считаем это ошибкой
                     console.log('Request cancelled');
                     return null;
                 }
@@ -402,23 +502,39 @@
             }
         }
 
+        // ============================================================
+        // Сортировка
+        // ============================================================
         const sortBar = document.getElementById('sortBar');
         const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        
         function updateSortButtons() {
             sortBar.querySelectorAll('.sort-btn').forEach(btn => {
                 const [key,dir] = btn.dataset.sort.split('-');
                 const arrow = btn.querySelector('.arrow');
-                if (key === sortKey) { btn.classList.add('active'); arrow.textContent = sortDir==='asc'?'↑':'↓'; }
-                else { btn.classList.remove('active'); arrow.textContent = (key==='name'||key==='size')?'↑':'↓'; }
+                if (key === sortKey) { 
+                    btn.classList.add('active'); 
+                    arrow.textContent = sortDir==='asc'?'↑':'↓'; 
+                } else { 
+                    btn.classList.remove('active'); 
+                    arrow.textContent = (key==='name'||key==='size')?'↑':'↓'; 
+                }
             });
         }
+        
         sortBar.addEventListener('click', e => {
             if (e.target.id === 'selectAllCheckbox') return;
-            const btn = e.target.closest('.sort-btn'); if (!btn) return;
+            const btn = e.target.closest('.sort-btn'); 
+            if (!btn) return;
             const [key,dir] = btn.dataset.sort.split('-');
-            if (key === sortKey) { sortDir = sortDir==='asc'?'desc':'asc'; }
-            else { sortKey = key; sortDir = (key==='name'||key==='size')?'asc':'desc'; }
-            updateSortButtons(); sortAndRender();
+            if (key === sortKey) { 
+                sortDir = sortDir==='asc'?'desc':'asc'; 
+            } else { 
+                sortKey = key; 
+                sortDir = (key==='name'||key==='size')?'asc':'desc'; 
+            }
+            updateSortButtons(); 
+            sortAndRender();
         });
         updateSortButtons();
 
@@ -429,9 +545,11 @@
                     va = a.name||''; vb = b.name||'';
                     return naturalCompare(va, vb);
                 } else if (sortKey === 'size') {
-                    va = a.size||0; vb = b.size||0; return va - vb;
+                    va = a.size||0; vb = b.size||0; 
+                    return va - vb;
                 } else if (sortKey === 'date') {
-                    va = a.date||''; vb = b.date||''; return va < vb ? -1 : va > vb ? 1 : 0;
+                    va = a.date||''; vb = b.date||''; 
+                    return va < vb ? -1 : va > vb ? 1 : 0;
                 }
                 return 0;
             };
@@ -440,78 +558,105 @@
             return { folders: sortedFolders, files: sortedFiles };
         }
 
-        let currentRawFolders = [], currentRawFiles = [];
-        let currentBreadcrumbs = [];
-        let currentParentId = 0;
-        let loadRetryCount = 0;
-        const MAX_RETRIES = 3;
-        let isLoading = false;
+        function sortAndRender() { 
+            const {folders,files}=sortContents(currentRawFolders,currentRawFiles); 
+            renderContents(folders, files); 
+        }
 
-        async function loadContents() {
-            if (isLoading) return;
+        // ============================================================
+        // Загрузка содержимого
+        // ============================================================
+        const contentEl = document.getElementById('content');
+        const breadcrumbsEl = document.getElementById('breadcrumbs');
+
+        function showLoading() {
+            contentEl.innerHTML = `
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <div class="empty-text">Загрузка...</div>
+                </div>
+            `;
+        }
+
+        function showError(message = 'Ошибка загрузки') {
+            contentEl.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">⚠️</div>
+                    <div class="empty-text">${message}</div>
+                    <div style="font-size:14px;margin-top:8px;color:var(--tg-theme-hint-color);">
+                        Нажмите для повторной попытки
+                    </div>
+                </div>
+            `;
+            contentEl.style.cursor = 'pointer';
+            contentEl.onclick = () => {
+                contentEl.onclick = null;
+                contentEl.style.cursor = 'default';
+                loadContents(true);
+            };
+        }
+
+        async function loadContents(force = false) {
+            if (isLoading && !force) return;
+            
+            // Показываем спиннер только при первой загрузке
+            if (isFirstLoad) {
+                showLoading();
+            }
+            
             isLoading = true;
             
             try {
                 const d = await apiCall('/api/contents', {folder_id: currentFolderId});
                 if (d === null) {
-                    // Запрос был отменен
                     isLoading = false;
                     return;
                 }
+                
                 currentRawFolders = d.folders || [];
                 currentRawFiles = d.files || [];
                 currentBreadcrumbs = d.breadcrumbs || [];
                 currentParentId = d.parent_id || 0;
+                
                 buildBreadcrumbs();
                 sortAndRender();
-                loadRetryCount = 0; // Сброс счетчика при успехе
+                
+                isFirstLoad = false;
+                contentEl.style.cursor = 'default';
+                contentEl.onclick = null;
+                
             } catch(e) {
                 console.error('Load error:', e);
-                loadRetryCount++;
-                
-                // Показываем ошибку только после нескольких неудачных попыток
-                if (loadRetryCount >= MAX_RETRIES) {
-                    contentEl.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-icon">⚠️</div>
-                            <div class="empty-text">Ошибка загрузки</div>
-                            <div style="font-size:14px;margin-top:8px;color:var(--tg-theme-hint-color);">
-                                Попробуйте обновить страницу
-                            </div>
-                            <div style="font-size:12px;margin-top:4px;color:var(--tg-theme-hint-color);opacity:0.6;">
-                                Нажмите для повторной попытки
-                            </div>
-                        </div>
-                    `;
-                    contentEl.style.cursor = 'pointer';
-                    contentEl.onclick = () => {
-                        contentEl.onclick = null;
-                        loadRetryCount = 0;
-                        loadContents();
-                    };
+                if (isFirstLoad) {
+                    showError(e.message || 'Ошибка загрузки');
                 } else {
-                    // Автоматическая повторная попытка через 2 секунды
-                    setTimeout(() => {
-                        isLoading = false;
-                        loadContents();
-                    }, 2000);
+                    showToast('Ошибка обновления: ' + (e.message || ''));
                 }
+                isFirstLoad = false;
             } finally {
                 isLoading = false;
             }
         }
 
-        // Периодическое обновление (замена WebSocket)
+        // ============================================================
+        // Периодическое обновление (фоном)
+        // ============================================================
         let lastAutoRefreshTime = 0;
         let isAutoRefreshing = false;
 
         async function autoRefresh() {
-            if (isAutoRefreshing) return;
+            if (isAutoRefreshing || isLoading) return;
+            if (isFirstLoad) return; // Не обновляем до первой загрузки
+            
             isAutoRefreshing = true;
             try {
                 const now = Date.now();
-                if (now - lastAutoRefreshTime > 3000) {
+                if (now - lastAutoRefreshTime > 5000) {
+                    // Не показываем спиннер при фоновом обновлении
+                    const oldFirstLoad = isFirstLoad;
+                    isFirstLoad = false;
                     await loadContents();
+                    isFirstLoad = oldFirstLoad;
                     lastAutoRefreshTime = now;
                 }
             } catch (e) {
@@ -524,134 +669,9 @@
         // Запускаем периодическое обновление каждые 5 секунд
         setInterval(autoRefresh, 5000);
 
-        function sortAndRender() { 
-            const {folders,files}=sortContents(currentRawFolders,currentRawFiles); 
-            renderContents(folders, files); 
-        }
-
-        const contentEl = document.getElementById('content');
-        const breadcrumbsEl = document.getElementById('breadcrumbs');
-
-        const popupOverlay = document.getElementById('popupOverlay'), menuBtn = document.getElementById('menuBtn');
-        const createFolderBtn = document.getElementById('createFolderBtn'), moveBtn = document.getElementById('moveBtn'), renameBtn = document.getElementById('renameBtn'), deleteBtn = document.getElementById('deleteBtn'), downloadBtn = document.getElementById('downloadBtn');
-        const createFolderModal = document.getElementById('createFolderModal'), modalTitle = document.getElementById('modalTitle'), folderNameInput = document.getElementById('folderNameInput'), cancelModalBtn = document.getElementById('cancelModalBtn'), confirmModalBtn = document.getElementById('confirmModalBtn');
-        const deleteModal1 = document.getElementById('deleteModal1'), deleteModal2 = document.getElementById('deleteModal2'), deleteButtons1 = document.getElementById('deleteButtons1'), deleteButtons2 = document.getElementById('deleteButtons2');
-        const moveModalOverlay = document.getElementById('moveModalOverlay'), moveBreadcrumbs = document.getElementById('moveBreadcrumbs'), moveContent = document.getElementById('moveContent'), moveBackBtn = document.getElementById('moveBackBtn'), moveCancelTopBtn = document.getElementById('moveCancelTopBtn'), moveCancelBtn = document.getElementById('moveCancelBtn'), moveConfirmBtn = document.getElementById('moveConfirmBtn');
-        let moveCurrentFolderId = 0, moveParentId = 0, moveBreadcrumbsData = [];
-        let modalMode = 'create', renameTarget = null, renameType = null;
-        let firstDeleteIndex = -1;
-
-        const propertiesModal = document.getElementById('propertiesModal');
-        const closePropertiesBtn = document.getElementById('closePropertiesBtn');
-        const propPath = document.getElementById('propPath');
-        const propRowPath = document.getElementById('propRowPath');
-        const propName = document.getElementById('propName');
-        const propCustomName = document.getElementById('propCustomName');
-        const propRowCustomName = document.getElementById('propRowCustomName');
-        const propDate = document.getElementById('propDate');
-        const propSize = document.getElementById('propSize');
-        const propContainsRow = document.getElementById('propContainsRow');
-        const propContains = document.getElementById('propContains');
-
-        function openNameModal(mode, targetName='', type='folder', extra='') {
-            modalMode = mode; renameTarget = null; renameType = type;
-            if (mode === 'create') {
-                modalTitle.textContent = 'Введите название папки:';
-                folderNameInput.value = '';
-                confirmModalBtn.textContent = 'Создать';
-            } else if (mode === 'rename') {
-                if (type === 'folder') {
-                    modalTitle.textContent = 'Новое имя папки:';
-                    folderNameInput.value = targetName;
-                    renameTarget = extra;
-                } else {
-                    modalTitle.textContent = 'Новое имя файла:';
-                    folderNameInput.value = targetName;
-                    renameTarget = extra;
-                }
-                confirmModalBtn.textContent = 'Переименовать';
-            }
-            createFolderModal.classList.add('active');
-            folderNameInput.focus();
-        }
-
-        cancelModalBtn.addEventListener('click', ()=>createFolderModal.classList.remove('active'));
-        confirmModalBtn.addEventListener('click', async () => {
-            const name = folderNameInput.value.trim();
-            if (modalMode === 'create') {
-                if (!name) { folderNameInput.focus(); return; }
-                try { await apiCall('/api/folders',{parent_folder_id: currentFolderId, name}); createFolderModal.classList.remove('active'); loadContents(); }
-                catch(e) { alert('Не удалось создать папку: '+e.message); }
-            } else if (modalMode === 'rename') {
-                if (!renameTarget) return;
-                const newName = name;
-                if (renameType === 'folder') {
-                    if (!newName) { folderNameInput.focus(); return; }
-                    try {
-                        await apiCall('/api/rename_folder',{folder_id: parseInt(renameTarget), newName: newName});
-                        createFolderModal.classList.remove('active'); selectedItems.clear(); loadContents();
-                    } catch(e) { alert('Не удалось переименовать: '+e.message); }
-                } else {
-                    try {
-                        await apiCall('/api/rename_file', {folder_id: currentFolderId, msg_id: parseInt(renameTarget), newCustomName: newName});
-                        createFolderModal.classList.remove('active'); selectedItems.clear(); loadContents();
-                    } catch(e) { alert('Не удалось переименовать файл: '+e.message); }
-                }
-            }
-        });
-        createFolderModal.addEventListener('click', e => { if (e.target===createFolderModal) createFolderModal.classList.remove('active'); });
-
-        function shuffleButtons(container) { const btns = Array.from(container.children); for (let i=btns.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); container.appendChild(btns[j]); } }
-        function shuffleDelete2AvoidPosition(avoidIdx) {
-            const container = deleteButtons2;
-            const buttons = Array.from(container.children);
-            const confirmBtn = buttons.find(b => b.classList.contains('confirm-del2'));
-            do {
-                for (let i = buttons.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); container.appendChild(buttons[j]); }
-                var currentIdx = Array.from(container.children).indexOf(confirmBtn);
-            } while (currentIdx === avoidIdx);
-        }
-
-        function openDeleteStep1() {
-            shuffleButtons(deleteButtons1);
-            const buttons1 = Array.from(deleteButtons1.children);
-            firstDeleteIndex = buttons1.findIndex(b => b.classList.contains('confirm-del1'));
-            deleteModal1.classList.add('active');
-        }
-
-        function closeDeleteModals() { deleteModal1.classList.remove('active'); deleteModal2.classList.remove('active'); }
-        deleteModal1.addEventListener('click', e => { if (e.target===deleteModal1) deleteModal1.classList.remove('active'); });
-        deleteModal2.addEventListener('click', e => { if (e.target===deleteModal2) deleteModal2.classList.remove('active'); });
-        deleteButtons1.addEventListener('click', e => {
-            if (e.target.classList.contains('cancel-del1')) deleteModal1.classList.remove('active');
-            else if (e.target.classList.contains('confirm-del1')) { deleteModal1.classList.remove('active'); shuffleDelete2AvoidPosition(firstDeleteIndex); deleteModal2.classList.add('active'); }
-        });
-        deleteButtons2.addEventListener('click', async e => {
-            if (e.target.classList.contains('cancel-del2')) deleteModal2.classList.remove('active');
-            else if (e.target.classList.contains('confirm-del2')) {
-                const items = [...selectedItems].map(item => {
-                    if (item.type === 'folder') return {type:'folder', folder_id: item.folder_id};
-                    else return {type:'file', msg_id: item.msg_id};
-                });
-                try { await apiCall('/api/delete',{items}); closeDeleteModals(); selectedItems.clear(); loadContents(); }
-                catch(e) { alert('Ошибка удаления: '+e.message); }
-            }
-        });
-        deleteBtn.addEventListener('click', () => { popupOverlay.classList.remove('active'); if (selectedItems.size===0) { showToast('Сначала выделите файлы или папки'); return; } openDeleteStep1(); });
-
-        downloadBtn.addEventListener('click', async () => {
-            popupOverlay.classList.remove('active');
-            if (selectedItems.size===0) { showToast('Сначала выделите файлы'); return; }
-            const msgIds = [];
-            for (let item of selectedItems) {
-                if (item.type !== 'file') { showToast('Скачивать можно только файлы'); return; }
-                msgIds.push(item.msg_id);
-            }
-            showToast('Начинаем отправку файлов...');
-            try { const r = await apiCall('/api/download',{items: msgIds}); if (r.status==='success') showToast('Все выделенные файлы успешно отправлены вам'); else showToast('Ошибка при отправке'); }
-            catch(e) { showToast('Ошибка: '+e.message); }
-        });
-
+        // ============================================================
+        // Хлебные крошки
+        // ============================================================
         function buildBreadcrumbs() {
             let html = '';
             currentBreadcrumbs.forEach((crumb, i) => {
@@ -668,13 +688,26 @@
                     if (!isNaN(fid)) navigateToFolder(fid);
                 });
             });
-            requestAnimationFrame(() => { breadcrumbsEl.scrollLeft = breadcrumbsEl.scrollWidth; });
+            requestAnimationFrame(() => { 
+                breadcrumbsEl.scrollLeft = breadcrumbsEl.scrollWidth; 
+            });
         }
 
+        function navigateToFolder(folderId) {
+            currentFolderId = folderId;
+            selectedItems.clear();
+            isFirstLoad = true;
+            loadContents(true);
+        }
+
+        // ============================================================
+        // Рендеринг содержимого
+        // ============================================================
         function toggleSelection(itemData) {
             const key = itemData.type === 'folder' ? 'folder:' + itemData.folder_id : 'file:' + itemData.msg_id;
             const existing = [...selectedItems].find(i => {
-                return (i.type === 'folder' && i.folder_id === itemData.folder_id) || (i.type === 'file' && i.msg_id === itemData.msg_id);
+                return (i.type === 'folder' && i.folder_id === itemData.folder_id) || 
+                       (i.type === 'file' && i.msg_id === itemData.msg_id);
             });
             if (existing) selectedItems.delete(existing);
             else selectedItems.add(itemData);
@@ -696,10 +729,19 @@
             });
             const totalItems = document.querySelectorAll('.item').length;
             const selectedCount = selectedItems.size;
-            if (totalItems === 0) { selectAllCheckbox.checked = false; selectAllCheckbox.indeterminate = false; }
-            else if (selectedCount === 0) { selectAllCheckbox.checked = false; selectAllCheckbox.indeterminate = false; }
-            else if (selectedCount === totalItems) { selectAllCheckbox.checked = true; selectAllCheckbox.indeterminate = false; }
-            else { selectAllCheckbox.checked = false; selectAllCheckbox.indeterminate = true; }
+            if (totalItems === 0) { 
+                selectAllCheckbox.checked = false; 
+                selectAllCheckbox.indeterminate = false; 
+            } else if (selectedCount === 0) { 
+                selectAllCheckbox.checked = false; 
+                selectAllCheckbox.indeterminate = false; 
+            } else if (selectedCount === totalItems) { 
+                selectAllCheckbox.checked = true; 
+                selectAllCheckbox.indeterminate = false; 
+            } else { 
+                selectAllCheckbox.checked = false; 
+                selectAllCheckbox.indeterminate = true; 
+            }
         }
 
         selectAllCheckbox.addEventListener('change', () => {
@@ -720,9 +762,117 @@
                         selectedItems.add(itemData);
                     }
                 });
-            } else { selectedItems.clear(); }
+            } else { 
+                selectedItems.clear(); 
+            }
             updateCheckboxStates();
         });
+
+        function renderContents(folders, files) {
+            contentEl.innerHTML = '';
+            contentEl.style.cursor = 'default';
+            contentEl.onclick = null;
+            
+            const isEmpty = !folders.length && !files.length;
+            if (isEmpty) {
+                contentEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">Пусто</div></div>';
+                updateCheckboxStates();
+                return;
+            }
+            
+            folders.forEach(folder => {
+                const displayValue = sortKey === 'date' ? (formatDateUTC(folder.date) || '—') : formatSize(folder.size);
+                const div = document.createElement('div'); 
+                div.className = 'item folder-item';
+                div.dataset.type = 'folder'; 
+                div.dataset.name = folder.name; 
+                div.dataset.folderId = folder.id;
+                div.innerHTML = `
+                    <div class="checkbox-col"><input type="checkbox" class="checkbox"></div>
+                    <span class="icon">${folderIconSVG}</span>
+                    <span class="item-name">${escapeHtml(folder.name)}</span>
+                    <span class="item-size">${displayValue}</span>
+                    <button class="item-info-btn" data-type="folder" data-id="${folder.id}">${infoIconSVG}</button>
+                `;
+                const cb = div.querySelector('.checkbox');
+                cb.addEventListener('change', e => { 
+                    e.stopPropagation(); 
+                    toggleSelection({type:'folder', folder_id: folder.id, name: folder.name}); 
+                });
+                div.addEventListener('click', e => { 
+                    if (e.target.tagName==='INPUT' && e.target.type==='checkbox') return; 
+                    if (e.target.closest('.item-info-btn')) return; 
+                    navigateToFolder(folder.id); 
+                });
+                div.querySelector('.item-info-btn').addEventListener('click', e => { 
+                    e.stopPropagation(); 
+                    showProperties('folder', folder.id); 
+                });
+                contentEl.appendChild(div);
+            });
+            
+            files.forEach(file => {
+                const displayValue = sortKey === 'date' ? (formatDateUTC(file.date) || '—') : formatSize(file.size);
+                const div = document.createElement('div'); 
+                div.className = 'item file-item';
+                div.dataset.type = 'file'; 
+                div.dataset.msgId = file.msg_id; 
+                div.dataset.name = file.name;
+                div.dataset.customName = file.custom_name || '';
+                
+                let iconHtml = '';
+                if (file.has_thumb) {
+                    iconHtml = `<img class="thumb" src="${API_BASE}/api/thumb?message_id=${file.msg_id}&size=small&initData=${encodeURIComponent(getInitData())}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />`;
+                    iconHtml += `<span style="display:none;">${fileIconSVG}</span>`;
+                } else { 
+                    iconHtml = fileIconSVG; 
+                }
+                
+                let displayName = file.custom_name || file.name;
+                let subName = file.custom_name ? file.name : null;
+                let nameBlock = `<div class="item-name-block"><div class="item-name">${escapeHtml(displayName)}</div>`;
+                if (subName) nameBlock += `<div class="file-custom-name">${escapeHtml(subName)}</div>`;
+                nameBlock += `</div>`;
+                
+                div.innerHTML = `
+                    <div class="checkbox-col"><input type="checkbox" class="checkbox"></div>
+                    <span class="icon">${iconHtml}</span>
+                    ${nameBlock}
+                    <span class="item-size">${displayValue}</span>
+                    <button class="item-info-btn" data-type="file" data-id="${file.msg_id}">${infoIconSVG}</button>
+                `;
+                const cb = div.querySelector('.checkbox');
+                cb.addEventListener('change', e => { 
+                    e.stopPropagation(); 
+                    toggleSelection({type:'file', msg_id: file.msg_id, name: file.name, custom_name: file.custom_name}); 
+                });
+                div.addEventListener('click', e => { 
+                    if (e.target.tagName==='INPUT' && e.target.type==='checkbox') return; 
+                    if (e.target.closest('.item-info-btn')) return; 
+                });
+                div.querySelector('.item-info-btn').addEventListener('click', e => { 
+                    e.stopPropagation(); 
+                    showProperties('file', file.msg_id); 
+                });
+                contentEl.appendChild(div);
+            });
+            updateCheckboxStates();
+        }
+
+        // ============================================================
+        // Свойства
+        // ============================================================
+        const propertiesModal = document.getElementById('propertiesModal');
+        const closePropertiesBtn = document.getElementById('closePropertiesBtn');
+        const propPath = document.getElementById('propPath');
+        const propRowPath = document.getElementById('propRowPath');
+        const propName = document.getElementById('propName');
+        const propCustomName = document.getElementById('propCustomName');
+        const propRowCustomName = document.getElementById('propRowCustomName');
+        const propDate = document.getElementById('propDate');
+        const propSize = document.getElementById('propSize');
+        const propContainsRow = document.getElementById('propContainsRow');
+        const propContains = document.getElementById('propContains');
 
         async function showProperties(type, id) {
             propertiesModal.classList.add('active');
@@ -735,6 +885,7 @@
             propSize.innerHTML = '—';
             propContains.textContent = '—';
             propContainsRow.style.display = (type === 'folder') ? 'flex' : 'none';
+            
             try {
                 const data = await apiCall('/api/item_properties', { type, id });
                 if (data === null) return;
@@ -764,75 +915,259 @@
         }
 
         closePropertiesBtn.addEventListener('click', () => propertiesModal.classList.remove('active'));
-        propertiesModal.addEventListener('click', e => { if (e.target === propertiesModal) propertiesModal.classList.remove('active'); });
-
-        function renderContents(folders, files) {
-            contentEl.innerHTML = '';
-            contentEl.style.cursor = 'default';
-            contentEl.onclick = null;
-            
-            const isEmpty = !folders.length && !files.length;
-            if (isEmpty) {
-                contentEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">Пусто</div></div>';
-                updateCheckboxStates();
-                return;
-            }
-            folders.forEach(folder => {
-                const displayValue = sortKey === 'date' ? (formatDateUTC(folder.date) || '—') : formatSize(folder.size);
-                const div = document.createElement('div'); div.className = 'item folder-item';
-                div.dataset.type = 'folder'; div.dataset.name = folder.name; div.dataset.folderId = folder.id;
-                div.innerHTML = `<div class="checkbox-col"><input type="checkbox" class="checkbox"></div><span class="icon">${folderIconSVG}</span><span class="item-name">${escapeHtml(folder.name)}</span><span class="item-size">${displayValue}</span><button class="item-info-btn" data-type="folder" data-id="${folder.id}">${infoIconSVG}</button>`;
-                const cb = div.querySelector('.checkbox');
-                cb.addEventListener('change', e => { e.stopPropagation(); toggleSelection({type:'folder', folder_id: folder.id, name: folder.name}); });
-                div.addEventListener('click', e => { if (e.target.tagName==='INPUT' && e.target.type==='checkbox') return; if (e.target.closest('.item-info-btn')) return; navigateToFolder(folder.id); });
-                div.querySelector('.item-info-btn').addEventListener('click', e => { e.stopPropagation(); showProperties('folder', folder.id); });
-                contentEl.appendChild(div);
-            });
-            files.forEach(file => {
-                const displayValue = sortKey === 'date' ? (formatDateUTC(file.date) || '—') : formatSize(file.size);
-                const div = document.createElement('div'); div.className = 'item file-item';
-                div.dataset.type = 'file'; div.dataset.msgId = file.msg_id; div.dataset.name = file.name;
-                div.dataset.customName = file.custom_name || '';
-                let iconHtml = '';
-                if (file.has_thumb) {
-                    iconHtml = `<img class="thumb" src="${API_BASE}/api/thumb?message_id=${file.msg_id}&size=small&initData=${encodeURIComponent(initData)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />`;
-                    iconHtml += `<span style="display:none;">${fileIconSVG}</span>`;
-                } else { iconHtml = fileIconSVG; }
-                let displayName = file.custom_name || file.name;
-                let subName = file.custom_name ? file.name : null;
-                let nameBlock = `<div class="item-name-block"><div class="item-name">${escapeHtml(displayName)}</div>`;
-                if (subName) nameBlock += `<div class="file-custom-name">${escapeHtml(subName)}</div>`;
-                nameBlock += `</div>`;
-                div.innerHTML = `<div class="checkbox-col"><input type="checkbox" class="checkbox"></div><span class="icon">${iconHtml}</span>${nameBlock}<span class="item-size">${displayValue}</span><button class="item-info-btn" data-type="file" data-id="${file.msg_id}">${infoIconSVG}</button>`;
-                const cb = div.querySelector('.checkbox');
-                cb.addEventListener('change', e => { e.stopPropagation(); toggleSelection({type:'file', msg_id: file.msg_id, name: file.name, custom_name: file.custom_name}); });
-                div.addEventListener('click', e => { if (e.target.tagName==='INPUT' && e.target.type==='checkbox') return; if (e.target.closest('.item-info-btn')) return; });
-                div.querySelector('.item-info-btn').addEventListener('click', e => { e.stopPropagation(); showProperties('file', file.msg_id); });
-                contentEl.appendChild(div);
-            });
-            updateCheckboxStates();
-        }
-
-        function navigateToFolder(folderId) {
-            currentFolderId = folderId;
-            selectedItems.clear();
-            loadRetryCount = 0;
-            loadContents();
-        }
-
-        menuBtn.addEventListener('click', ()=>popupOverlay.classList.add('active'));
-        popupOverlay.addEventListener('click', e => { if (e.target===popupOverlay) popupOverlay.classList.remove('active'); });
-        createFolderBtn.addEventListener('click', ()=>{ popupOverlay.classList.remove('active'); openNameModal('create'); });
-        moveBtn.addEventListener('click', ()=>{ popupOverlay.classList.remove('active'); if (selectedItems.size===0) { showToast('Сначала выделите файлы или папки'); return; } openMoveModal(); });
-        renameBtn.addEventListener('click', ()=>{
-            popupOverlay.classList.remove('active');
-            if (selectedItems.size === 0) { showToast('Сначала выделите элемент для переименования'); return; }
-            if (selectedItems.size > 1) { showToast('Можно переименовать только один элемент за раз'); return; }
-            const item = [...selectedItems][0];
-            if (item.type === 'folder') { openNameModal('rename', item.name, 'folder', item.folder_id.toString()); }
-            else { openNameModal('rename', item.custom_name || item.name, 'file', item.msg_id.toString()); }
+        propertiesModal.addEventListener('click', e => { 
+            if (e.target === propertiesModal) propertiesModal.classList.remove('active'); 
         });
 
+        // ============================================================
+        // Модальные окна
+        // ============================================================
+        const popupOverlay = document.getElementById('popupOverlay');
+        const menuBtn = document.getElementById('menuBtn');
+        const createFolderBtn = document.getElementById('createFolderBtn');
+        const moveBtn = document.getElementById('moveBtn');
+        const renameBtn = document.getElementById('renameBtn');
+        const deleteBtn = document.getElementById('deleteBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        
+        const createFolderModal = document.getElementById('createFolderModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const folderNameInput = document.getElementById('folderNameInput');
+        const cancelModalBtn = document.getElementById('cancelModalBtn');
+        const confirmModalBtn = document.getElementById('confirmModalBtn');
+        
+        const deleteModal1 = document.getElementById('deleteModal1');
+        const deleteModal2 = document.getElementById('deleteModal2');
+        const deleteButtons1 = document.getElementById('deleteButtons1');
+        const deleteButtons2 = document.getElementById('deleteButtons2');
+        
+        const moveModalOverlay = document.getElementById('moveModalOverlay');
+        const moveBreadcrumbs = document.getElementById('moveBreadcrumbs');
+        const moveContent = document.getElementById('moveContent');
+        const moveBackBtn = document.getElementById('moveBackBtn');
+        const moveCancelTopBtn = document.getElementById('moveCancelTopBtn');
+        const moveCancelBtn = document.getElementById('moveCancelBtn');
+        const moveConfirmBtn = document.getElementById('moveConfirmBtn');
+        
+        let moveCurrentFolderId = 0, moveParentId = 0, moveBreadcrumbsData = [];
+        let modalMode = 'create', renameTarget = null, renameType = null;
+        let firstDeleteIndex = -1;
+
+        function openNameModal(mode, targetName='', type='folder', extra='') {
+            modalMode = mode; 
+            renameTarget = null; 
+            renameType = type;
+            if (mode === 'create') {
+                modalTitle.textContent = 'Введите название папки:';
+                folderNameInput.value = '';
+                confirmModalBtn.textContent = 'Создать';
+            } else if (mode === 'rename') {
+                if (type === 'folder') {
+                    modalTitle.textContent = 'Новое имя папки:';
+                    folderNameInput.value = targetName;
+                    renameTarget = extra;
+                } else {
+                    modalTitle.textContent = 'Новое имя файла:';
+                    folderNameInput.value = targetName;
+                    renameTarget = extra;
+                }
+                confirmModalBtn.textContent = 'Переименовать';
+            }
+            createFolderModal.classList.add('active');
+            setTimeout(() => folderNameInput.focus(), 100);
+        }
+
+        cancelModalBtn.addEventListener('click', ()=>createFolderModal.classList.remove('active'));
+        confirmModalBtn.addEventListener('click', async () => {
+            const name = folderNameInput.value.trim();
+            if (modalMode === 'create') {
+                if (!name) { folderNameInput.focus(); return; }
+                try { 
+                    await apiCall('/api/folders',{parent_folder_id: currentFolderId, name}); 
+                    createFolderModal.classList.remove('active'); 
+                    isFirstLoad = true;
+                    loadContents(true); 
+                } catch(e) { 
+                    alert('Не удалось создать папку: '+e.message); 
+                }
+            } else if (modalMode === 'rename') {
+                if (!renameTarget) return;
+                const newName = name;
+                if (renameType === 'folder') {
+                    if (!newName) { folderNameInput.focus(); return; }
+                    try {
+                        await apiCall('/api/rename_folder',{folder_id: parseInt(renameTarget), newName: newName});
+                        createFolderModal.classList.remove('active'); 
+                        selectedItems.clear(); 
+                        loadContents(true);
+                    } catch(e) { 
+                        alert('Не удалось переименовать: '+e.message); 
+                    }
+                } else {
+                    try {
+                        await apiCall('/api/rename_file', {folder_id: currentFolderId, msg_id: parseInt(renameTarget), newCustomName: newName});
+                        createFolderModal.classList.remove('active'); 
+                        selectedItems.clear(); 
+                        loadContents(true);
+                    } catch(e) { 
+                        alert('Не удалось переименовать файл: '+e.message); 
+                    }
+                }
+            }
+        });
+        createFolderModal.addEventListener('click', e => { 
+            if (e.target===createFolderModal) createFolderModal.classList.remove('active'); 
+        });
+
+        function shuffleButtons(container) { 
+            const btns = Array.from(container.children); 
+            for (let i=btns.length-1;i>0;i--){ 
+                const j=Math.floor(Math.random()*(i+1)); 
+                container.appendChild(btns[j]); 
+            } 
+        }
+        
+        function shuffleDelete2AvoidPosition(avoidIdx) {
+            const container = deleteButtons2;
+            const buttons = Array.from(container.children);
+            const confirmBtn = buttons.find(b => b.classList.contains('confirm-del2'));
+            let currentIdx;
+            do {
+                for (let i = buttons.length - 1; i > 0; i--) { 
+                    const j = Math.floor(Math.random() * (i + 1)); 
+                    container.appendChild(buttons[j]); 
+                }
+                currentIdx = Array.from(container.children).indexOf(confirmBtn);
+            } while (currentIdx === avoidIdx);
+        }
+
+        function openDeleteStep1() {
+            shuffleButtons(deleteButtons1);
+            const buttons1 = Array.from(deleteButtons1.children);
+            firstDeleteIndex = buttons1.findIndex(b => b.classList.contains('confirm-del1'));
+            deleteModal1.classList.add('active');
+        }
+
+        function closeDeleteModals() { 
+            deleteModal1.classList.remove('active'); 
+            deleteModal2.classList.remove('active'); 
+        }
+        
+        deleteModal1.addEventListener('click', e => { 
+            if (e.target===deleteModal1) deleteModal1.classList.remove('active'); 
+        });
+        deleteModal2.addEventListener('click', e => { 
+            if (e.target===deleteModal2) deleteModal2.classList.remove('active'); 
+        });
+        
+        deleteButtons1.addEventListener('click', e => {
+            if (e.target.classList.contains('cancel-del1')) {
+                deleteModal1.classList.remove('active');
+            } else if (e.target.classList.contains('confirm-del1')) { 
+                deleteModal1.classList.remove('active'); 
+                shuffleDelete2AvoidPosition(firstDeleteIndex); 
+                deleteModal2.classList.add('active'); 
+            }
+        });
+        
+        deleteButtons2.addEventListener('click', async e => {
+            if (e.target.classList.contains('cancel-del2')) {
+                deleteModal2.classList.remove('active');
+            } else if (e.target.classList.contains('confirm-del2')) {
+                const items = [...selectedItems].map(item => {
+                    if (item.type === 'folder') return {type:'folder', folder_id: item.folder_id};
+                    else return {type:'file', msg_id: item.msg_id};
+                });
+                try { 
+                    await apiCall('/api/delete',{items}); 
+                    closeDeleteModals(); 
+                    selectedItems.clear(); 
+                    loadContents(true); 
+                } catch(e) { 
+                    alert('Ошибка удаления: '+e.message); 
+                }
+            }
+        });
+
+        // ============================================================
+        // Обработчики кнопок
+        // ============================================================
+        menuBtn.addEventListener('click', ()=>popupOverlay.classList.add('active'));
+        popupOverlay.addEventListener('click', e => { 
+            if (e.target===popupOverlay) popupOverlay.classList.remove('active'); 
+        });
+        
+        createFolderBtn.addEventListener('click', ()=>{ 
+            popupOverlay.classList.remove('active'); 
+            openNameModal('create'); 
+        });
+        
+        moveBtn.addEventListener('click', ()=>{ 
+            popupOverlay.classList.remove('active'); 
+            if (selectedItems.size===0) { 
+                showToast('Сначала выделите файлы или папки'); 
+                return; 
+            } 
+            openMoveModal(); 
+        });
+        
+        renameBtn.addEventListener('click', ()=>{
+            popupOverlay.classList.remove('active');
+            if (selectedItems.size === 0) { 
+                showToast('Сначала выделите элемент для переименования'); 
+                return; 
+            }
+            if (selectedItems.size > 1) { 
+                showToast('Можно переименовать только один элемент за раз'); 
+                return; 
+            }
+            const item = [...selectedItems][0];
+            if (item.type === 'folder') { 
+                openNameModal('rename', item.name, 'folder', item.folder_id.toString()); 
+            } else { 
+                openNameModal('rename', item.custom_name || item.name, 'file', item.msg_id.toString()); 
+            }
+        });
+
+        deleteBtn.addEventListener('click', () => { 
+            popupOverlay.classList.remove('active'); 
+            if (selectedItems.size===0) { 
+                showToast('Сначала выделите файлы или папки'); 
+                return; 
+            } 
+            openDeleteStep1(); 
+        });
+
+        downloadBtn.addEventListener('click', async () => {
+            popupOverlay.classList.remove('active');
+            if (selectedItems.size===0) { 
+                showToast('Сначала выделите файлы'); 
+                return; 
+            }
+            const msgIds = [];
+            for (let item of selectedItems) {
+                if (item.type !== 'file') { 
+                    showToast('Скачивать можно только файлы'); 
+                    return; 
+                }
+                msgIds.push(item.msg_id);
+            }
+            showToast('Начинаем отправку файлов...');
+            try { 
+                const r = await apiCall('/api/download',{items: msgIds}); 
+                if (r.status==='success') {
+                    showToast('Все выделенные файлы успешно отправлены вам');
+                } else {
+                    showToast('Ошибка при отправке');
+                }
+            } catch(e) { 
+                showToast('Ошибка: '+e.message); 
+            }
+        });
+
+        // ============================================================
+        // Перемещение
+        // ============================================================
         function buildMoveBreadcrumbs() {
             let html = '';
             moveBreadcrumbsData.forEach((crumb, i) => {
@@ -849,7 +1184,9 @@
                     if (!isNaN(fid)) moveToFolder(fid);
                 });
             });
-            requestAnimationFrame(() => { moveBreadcrumbs.scrollLeft = moveBreadcrumbs.scrollWidth; });
+            requestAnimationFrame(() => { 
+                moveBreadcrumbs.scrollLeft = moveBreadcrumbs.scrollWidth; 
+            });
         }
 
         async function loadMoveContents() {
@@ -876,16 +1213,22 @@
                 moveContent.innerHTML = '<div class="empty-state"><div class="empty-text">Ошибка</div></div>';
             }
         }
+        
         function moveToFolder(folderId) {
             moveCurrentFolderId = folderId;
             loadMoveContents();
         }
+        
         function openMoveModal() {
             moveModalOverlay.classList.add('active');
             moveCurrentFolderId = 0;
             loadMoveContents();
         }
-        function closeMoveModal() { moveModalOverlay.classList.remove('active'); }
+        
+        function closeMoveModal() { 
+            moveModalOverlay.classList.remove('active'); 
+        }
+        
         moveBackBtn.addEventListener('click', ()=>{
             if (moveCurrentFolderId === 0) return;
             moveToFolder(moveParentId);
@@ -893,23 +1236,63 @@
         moveCancelTopBtn.addEventListener('click', closeMoveModal);
         moveCancelBtn.addEventListener('click', closeMoveModal);
         moveConfirmBtn.addEventListener('click', async () => {
-            if (moveCurrentFolderId === currentFolderId) { showToast('Нельзя переместить в ту же папку'); return; }
+            if (moveCurrentFolderId === currentFolderId) { 
+                showToast('Нельзя переместить в ту же папку'); 
+                return; 
+            }
             const items = [...selectedItems].map(item => {
                 if (item.type === 'folder') return {type:'folder', folder_id: item.folder_id};
                 else return {type:'file', msg_id: item.msg_id};
             });
-            try { await apiCall('/api/move',{target_folder_id: moveCurrentFolderId, items}); closeMoveModal(); selectedItems.clear(); loadContents(); }
-            catch(e) { alert('Ошибка перемещения: '+e.message); }
+            try { 
+                await apiCall('/api/move',{target_folder_id: moveCurrentFolderId, items}); 
+                closeMoveModal(); 
+                selectedItems.clear(); 
+                loadContents(true); 
+            } catch(e) { 
+                alert('Ошибка перемещения: '+e.message); 
+            }
         });
-        moveModalOverlay.addEventListener('click', e => { if (e.target===moveModalOverlay) closeMoveModal(); });
+        moveModalOverlay.addEventListener('click', e => { 
+            if (e.target===moveModalOverlay) closeMoveModal(); 
+        });
 
+        // ============================================================
+        // Context menu (долгое нажатие)
+        // ============================================================
         document.addEventListener('contextmenu', function(e) {
             e.preventDefault();
             document.getElementById('popupOverlay').classList.add('active');
         });
 
-        // Загружаем содержимое при старте
-        loadContents();
+        // ============================================================
+        // Запуск - максимально быстрая загрузка
+        // ============================================================
+        // Сначала пытаемся получить initData синхронно
+        const syncData = tg.initData || '';
+        if (syncData) {
+            initData = syncData;
+            initDataReady = true;
+            tg.ready();
+            // Загружаем сразу
+            loadContents();
+        } else {
+            // Если синхронно не получилось, ждем с интервалом
+            showLoading();
+            let attempts = 0;
+            const maxAttempts = 20; // 200ms максимум
+            const checkInterval = setInterval(() => {
+                attempts++;
+                const data = tg.initData || '';
+                if (data || attempts >= maxAttempts) {
+                    clearInterval(checkInterval);
+                    initData = data || '';
+                    initDataReady = true;
+                    tg.ready();
+                    loadContents();
+                }
+            }, 10);
+        }
     </script>
 </body>
 </html>
