@@ -318,39 +318,42 @@
         const tg = window.Telegram.WebApp;
         tg.ready();
 
-        function waitForInitData(timeout = 5000) {
-          return new Promise((resolve) => {
-            if (tg.initData) return resolve(tg.initData);
+        function waitForInitData(timeout = 20000) {
+            return new Promise((resolve) => {
+                document.getElementById('content').innerHTML =
+                    '<div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-text">Загрузка...</div></div>';
 
-            const start = Date.now();
-            const check = () => {
-              if (tg.initData) {
-                resolve(tg.initData);
-              } else if (Date.now() - start > timeout) {
-                resolve('');
-              } else {
-                setTimeout(check, 100);
-              }
-            };
-            check();
-          });
+                if (tg.initData) return resolve(tg.initData);
+
+                const start = Date.now();
+                const check = () => {
+                    if (tg.initData) {
+                        resolve(tg.initData);
+                    } else if (Date.now() - start > timeout) {
+                        resolve('');
+                    } else {
+                        setTimeout(check, 200);
+                    }
+                };
+                check();
+            });
         }
 
         let initData = '';
         let isTelegramReady = false;
 
         async function initApp() {
-          initData = await waitForInitData();
+            initData = await waitForInitData();
 
-          if (!initData) {
-            document.getElementById('content').innerHTML =
-              '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Откройте приложение из Telegram</div></div>';
-            return;
-          }
+            if (!initData) {
+                document.getElementById('content').innerHTML =
+                    '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Не удалось получить данные Telegram. Перезагрузите приложение.</div></div>';
+                return;
+            }
 
-          isTelegramReady = true;
-          connectWebSocket();
-          loadContents();
+            isTelegramReady = true;
+            connectWebSocket();
+            loadContents();
         }
 
         let currentFolderId = 0;
