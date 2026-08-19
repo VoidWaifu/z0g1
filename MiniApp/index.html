@@ -318,9 +318,7 @@
         const tg = window.Telegram.WebApp;
         tg.ready();
 
-        // Глобальная переменная для initData
         let initData = "";
-
         let currentFolderId = 0;
         const selectedItems = new Set();
         let sortKey = 'name', sortDir = 'asc';
@@ -366,7 +364,6 @@
             return 0;
         }
 
-        // Улучшенный apiCall с повторными попытками, обработкой 401 и ожиданием initData
         async function apiCall(endpoint, body) {
             const maxRetries = 3;
             let lastError;
@@ -378,7 +375,6 @@
                         body: JSON.stringify({ initData, ...body })
                     });
 
-                    // Если 401 и initData пуст, ждём его появления
                     if (resp.status === 401 && !initData) {
                         await waitForInitData();
                         continue;
@@ -403,10 +399,9 @@
             throw lastError;
         }
 
-        // Функция ожидания initData (до 30 секунд)
         async function waitForInitData() {
             let attempts = 0;
-            const maxAttempts = 300; // 300 * 100мс = 30 секунд
+            const maxAttempts = 300;
             while (!initData && attempts < maxAttempts) {
                 initData = tg.initData || "";
                 if (!initData) {
@@ -488,7 +483,6 @@
             try {
                 await loadContents();
             } catch (e) {
-                // loadContents уже показывает ошибку
             }
         }
 
@@ -867,20 +861,34 @@
             document.getElementById('popupOverlay').classList.add('active');
         });
 
-        // ================== ИНИЦИАЛИЗАЦИЯ ==================
-        (async function initApp() {
-            // Показываем экран загрузки
-            contentEl.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-text">Загрузка...</div></div>';
+        let loadingInterval = null;
+        function startLoadingAnimation() {
+            const loadingText = document.getElementById('loadingText');
+            if (!loadingText) return;
+            let dots = 0;
+            clearInterval(loadingInterval);
+            loadingInterval = setInterval(() => {
+                dots = (dots % 3) + 1;
+                loadingText.textContent = 'Загрузка' + '.'.repeat(dots);
+            }, 300);
+        }
+        function stopLoadingAnimation() {
+            clearInterval(loadingInterval);
+            loadingInterval = null;
+        }
 
-            // Ждём initData
+        (async function initApp() {
+            contentEl.innerHTML = '<div class="empty-state"><div class="empty-text" id="loadingText">Загрузка</div></div>';
+            startLoadingAnimation();
+
             const hasInitData = await waitForInitData();
+            stopLoadingAnimation();
 
             if (!hasInitData) {
                 contentEl.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Ошибка инициализации. Попробуйте перезапустить приложение.</div></div>';
                 return;
             }
 
-            // Теперь загружаем контент и подключаем WebSocket
             loadContentsWithRetry();
             connectWebSocket();
         })();
