@@ -315,8 +315,9 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         const API_BASE = 'https://z0g1.voidwaifu.workers.dev';
-        const tg = window.Telegram.WebApp; tg.ready();
-        const initData = tg.initData || "";
+        const tg = window.Telegram.WebApp; 
+        tg.ready();
+        
         let currentFolderId = 0;
         const selectedItems = new Set();
         let sortKey = 'name', sortDir = 'asc';
@@ -363,21 +364,39 @@
         }
 
         async function apiCall(endpoint, body) {
-            const resp = await fetch(API_BASE + endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({initData, ...body}) });
-            if (!resp.ok) { const err = await resp.json(); throw new Error(err.error||'Request failed'); }
+            const resp = await fetch(API_BASE + endpoint, { 
+                method:'POST', 
+                headers:{'Content-Type':'application/json'}, 
+                body: JSON.stringify({initData: tg.initData || "", ...body}) 
+            });
+            if (!resp.ok) { 
+                const err = await resp.json(); 
+                throw new Error(err.error || 'Request failed'); 
+            }
             return await resp.json();
         }
 
-        let ws;
+        let ws = null;
         function connectWebSocket() {
+            if (ws && ws.readyState === WebSocket.OPEN) return;
+            
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//z0g1.voidwaifu.workers.dev/ws?initData=${encodeURIComponent(initData)}`;
+            const wsUrl = `${protocol}//z0g1.voidwaifu.workers.dev/ws?initData=${encodeURIComponent(tg.initData || "")}`;
             ws = new WebSocket(wsUrl);
-            ws.onmessage = (event) => { try { const msg = JSON.parse(event.data); if (msg.type) loadContents(); } catch(e) {} };
-            ws.onclose = () => { setTimeout(connectWebSocket, 3000); };
-            ws.onerror = () => { ws.close(); };
+            ws.onmessage = (event) => { 
+                try { 
+                    const msg = JSON.parse(event.data); 
+                    if (msg.type) loadContents(); 
+                } catch(e) {} 
+            };
+            ws.onclose = () => { 
+                ws = null;
+                setTimeout(connectWebSocket, 3000); 
+            };
+            ws.onerror = () => { 
+                if (ws) ws.close(); 
+            };
         }
-        connectWebSocket();
 
         const sortBar = document.getElementById('sortBar');
         const selectAllCheckbox = document.getElementById('selectAllCheckbox');
@@ -385,17 +404,30 @@
             sortBar.querySelectorAll('.sort-btn').forEach(btn => {
                 const [key,dir] = btn.dataset.sort.split('-');
                 const arrow = btn.querySelector('.arrow');
-                if (key === sortKey) { btn.classList.add('active'); arrow.textContent = sortDir==='asc'?'↑':'↓'; }
-                else { btn.classList.remove('active'); arrow.textContent = (key==='name'||key==='size')?'↑':'↓'; }
+                if (key === sortKey) { 
+                    btn.classList.add('active'); 
+                    arrow.textContent = sortDir==='asc'?'↑':'↓'; 
+                }
+                else { 
+                    btn.classList.remove('active'); 
+                    arrow.textContent = (key==='name'||key==='size')?'↑':'↓'; 
+                }
             });
         }
         sortBar.addEventListener('click', e => {
             if (e.target.id === 'selectAllCheckbox') return;
-            const btn = e.target.closest('.sort-btn'); if (!btn) return;
+            const btn = e.target.closest('.sort-btn'); 
+            if (!btn) return;
             const [key,dir] = btn.dataset.sort.split('-');
-            if (key === sortKey) { sortDir = sortDir==='asc'?'desc':'asc'; }
-            else { sortKey = key; sortDir = (key==='name'||key==='size')?'asc':'desc'; }
-            updateSortButtons(); sortAndRender();
+            if (key === sortKey) { 
+                sortDir = sortDir==='asc'?'desc':'asc'; 
+            }
+            else { 
+                sortKey = key; 
+                sortDir = (key==='name'||key==='size')?'asc':'desc'; 
+            }
+            updateSortButtons(); 
+            sortAndRender();
         });
         updateSortButtons();
 
@@ -406,9 +438,11 @@
                     va = a.name||''; vb = b.name||'';
                     return naturalCompare(va, vb);
                 } else if (sortKey === 'size') {
-                    va = a.size||0; vb = b.size||0; return va - vb;
+                    va = a.size||0; vb = b.size||0; 
+                    return va - vb;
                 } else if (sortKey === 'date') {
-                    va = a.date||''; vb = b.date||''; return va < vb ? -1 : va > vb ? 1 : 0;
+                    va = a.date||''; vb = b.date||''; 
+                    return va < vb ? -1 : va > vb ? 1 : 0;
                 }
                 return 0;
             };
@@ -434,7 +468,10 @@
                 contentEl.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Ошибка загрузки</div></div>';
             }
         }
-        function sortAndRender() { const {folders,files}=sortContents(currentRawFolders,currentRawFiles); renderContents(folders,files); }
+        function sortAndRender() { 
+            const {folders,files} = sortContents(currentRawFolders, currentRawFiles); 
+            renderContents(folders,files); 
+        }
 
         const contentEl = document.getElementById('content');
         const breadcrumbsEl = document.getElementById('breadcrumbs');
@@ -461,7 +498,9 @@
         const propContains = document.getElementById('propContains');
 
         function openNameModal(mode, targetName='', type='folder', extra='') {
-            modalMode = mode; renameTarget = null; renameType = type;
+            modalMode = mode; 
+            renameTarget = null; 
+            renameType = type;
             if (mode === 'create') {
                 modalTitle.textContent = 'Введите название папки:';
                 folderNameInput.value = '';
@@ -486,35 +525,66 @@
         confirmModalBtn.addEventListener('click', async () => {
             const name = folderNameInput.value.trim();
             if (modalMode === 'create') {
-                if (!name) { folderNameInput.focus(); return; }
-                try { await apiCall('/api/folders',{parent_folder_id: currentFolderId, name}); createFolderModal.classList.remove('active'); loadContents(); }
-                catch(e) { alert('Не удалось создать папку: '+e.message); }
+                if (!name) { 
+                    folderNameInput.focus(); 
+                    return; 
+                }
+                try { 
+                    await apiCall('/api/folders', {parent_folder_id: currentFolderId, name}); 
+                    createFolderModal.classList.remove('active'); 
+                    loadContents(); 
+                }
+                catch(e) { 
+                    alert('Не удалось создать папку: ' + e.message); 
+                }
             } else if (modalMode === 'rename') {
                 if (!renameTarget) return;
                 const newName = name;
                 if (renameType === 'folder') {
-                    if (!newName) { folderNameInput.focus(); return; }
+                    if (!newName) { 
+                        folderNameInput.focus(); 
+                        return; 
+                    }
                     try {
-                        await apiCall('/api/rename_folder',{folder_id: parseInt(renameTarget), newName: newName});
-                        createFolderModal.classList.remove('active'); selectedItems.clear(); loadContents();
-                    } catch(e) { alert('Не удалось переименовать: '+e.message); }
+                        await apiCall('/api/rename_folder', {folder_id: parseInt(renameTarget), newName: newName});
+                        createFolderModal.classList.remove('active'); 
+                        selectedItems.clear(); 
+                        loadContents();
+                    } catch(e) { 
+                        alert('Не удалось переименовать: ' + e.message); 
+                    }
                 } else {
                     try {
                         await apiCall('/api/rename_file', {folder_id: currentFolderId, msg_id: parseInt(renameTarget), newCustomName: newName});
-                        createFolderModal.classList.remove('active'); selectedItems.clear(); loadContents();
-                    } catch(e) { alert('Не удалось переименовать файл: '+e.message); }
+                        createFolderModal.classList.remove('active'); 
+                        selectedItems.clear(); 
+                        loadContents();
+                    } catch(e) { 
+                        alert('Не удалось переименовать файл: ' + e.message); 
+                    }
                 }
             }
         });
-        createFolderModal.addEventListener('click', e => { if (e.target===createFolderModal) createFolderModal.classList.remove('active'); });
+        createFolderModal.addEventListener('click', e => { 
+            if (e.target === createFolderModal) createFolderModal.classList.remove('active'); 
+        });
 
-        function shuffleButtons(container) { const btns = Array.from(container.children); for (let i=btns.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); container.appendChild(btns[j]); } }
+        function shuffleButtons(container) { 
+            const btns = Array.from(container.children); 
+            for (let i = btns.length - 1; i > 0; i--) { 
+                const j = Math.floor(Math.random() * (i + 1)); 
+                container.appendChild(btns[j]); 
+            } 
+        }
         function shuffleDelete2AvoidPosition(avoidIdx) {
             const container = deleteButtons2;
             const buttons = Array.from(container.children);
             const confirmBtn = buttons.find(b => b.classList.contains('confirm-del2'));
             do {
-                for (let i = buttons.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); container.appendChild(buttons[j]); }
+                for (let i = buttons.length - 1; i > 0; i--) { 
+                    const j = Math.floor(Math.random() * (i + 1)); 
+                    container.appendChild(buttons[j]); 
+                }
                 var currentIdx = Array.from(container.children).indexOf(confirmBtn);
             } while (currentIdx === avoidIdx);
         }
@@ -526,12 +596,23 @@
             deleteModal1.classList.add('active');
         }
 
-        function closeDeleteModals() { deleteModal1.classList.remove('active'); deleteModal2.classList.remove('active'); }
-        deleteModal1.addEventListener('click', e => { if (e.target===deleteModal1) deleteModal1.classList.remove('active'); });
-        deleteModal2.addEventListener('click', e => { if (e.target===deleteModal2) deleteModal2.classList.remove('active'); });
+        function closeDeleteModals() { 
+            deleteModal1.classList.remove('active'); 
+            deleteModal2.classList.remove('active'); 
+        }
+        deleteModal1.addEventListener('click', e => { 
+            if (e.target === deleteModal1) deleteModal1.classList.remove('active'); 
+        });
+        deleteModal2.addEventListener('click', e => { 
+            if (e.target === deleteModal2) deleteModal2.classList.remove('active'); 
+        });
         deleteButtons1.addEventListener('click', e => {
             if (e.target.classList.contains('cancel-del1')) deleteModal1.classList.remove('active');
-            else if (e.target.classList.contains('confirm-del1')) { deleteModal1.classList.remove('active'); shuffleDelete2AvoidPosition(firstDeleteIndex); deleteModal2.classList.add('active'); }
+            else if (e.target.classList.contains('confirm-del1')) { 
+                deleteModal1.classList.remove('active'); 
+                shuffleDelete2AvoidPosition(firstDeleteIndex); 
+                deleteModal2.classList.add('active'); 
+            }
         });
         deleteButtons2.addEventListener('click', async e => {
             if (e.target.classList.contains('cancel-del2')) deleteModal2.classList.remove('active');
@@ -540,23 +621,49 @@
                     if (item.type === 'folder') return {type:'folder', folder_id: item.folder_id};
                     else return {type:'file', msg_id: item.msg_id};
                 });
-                try { await apiCall('/api/delete',{items}); closeDeleteModals(); selectedItems.clear(); loadContents(); }
-                catch(e) { alert('Ошибка удаления: '+e.message); }
+                try { 
+                    await apiCall('/api/delete', {items}); 
+                    closeDeleteModals(); 
+                    selectedItems.clear(); 
+                    loadContents(); 
+                }
+                catch(e) { 
+                    alert('Ошибка удаления: ' + e.message); 
+                }
             }
         });
-        deleteBtn.addEventListener('click', () => { popupOverlay.classList.remove('active'); if (selectedItems.size===0) { showToast('Сначала выделите файлы или папки'); return; } openDeleteStep1(); });
+        deleteBtn.addEventListener('click', () => { 
+            popupOverlay.classList.remove('active'); 
+            if (selectedItems.size === 0) { 
+                showToast('Сначала выделите файлы или папки'); 
+                return; 
+            } 
+            openDeleteStep1(); 
+        });
 
         downloadBtn.addEventListener('click', async () => {
             popupOverlay.classList.remove('active');
-            if (selectedItems.size===0) { showToast('Сначала выделите файлы'); return; }
+            if (selectedItems.size === 0) { 
+                showToast('Сначала выделите файлы'); 
+                return; 
+            }
             const msgIds = [];
             for (let item of selectedItems) {
-                if (item.type !== 'file') { showToast('Скачивать можно только файлы'); return; }
+                if (item.type !== 'file') { 
+                    showToast('Скачивать можно только файлы'); 
+                    return; 
+                }
                 msgIds.push(item.msg_id);
             }
             showToast('Начинаем отправку файлов...');
-            try { const r = await apiCall('/api/download',{items: msgIds}); if (r.status==='success') showToast('Все выделенные файлы успешно отправлены вам'); else showToast('Ошибка при отправке'); }
-            catch(e) { showToast('Ошибка: '+e.message); }
+            try { 
+                const r = await apiCall('/api/download', {items: msgIds}); 
+                if (r.status === 'success') showToast('Все выделенные файлы успешно отправлены вам'); 
+                else showToast('Ошибка при отправке'); 
+            }
+            catch(e) { 
+                showToast('Ошибка: ' + e.message); 
+            }
         });
 
         function buildBreadcrumbs() {
@@ -575,13 +682,16 @@
                     if (!isNaN(fid)) navigateToFolder(fid);
                 });
             });
-            requestAnimationFrame(() => { breadcrumbsEl.scrollLeft = breadcrumbsEl.scrollWidth; });
+            requestAnimationFrame(() => { 
+                breadcrumbsEl.scrollLeft = breadcrumbsEl.scrollWidth; 
+            });
         }
 
         function toggleSelection(itemData) {
             const key = itemData.type === 'folder' ? 'folder:' + itemData.folder_id : 'file:' + itemData.msg_id;
             const existing = [...selectedItems].find(i => {
-                return (i.type === 'folder' && i.folder_id === itemData.folder_id) || (i.type === 'file' && i.msg_id === itemData.msg_id);
+                return (i.type === 'folder' && i.folder_id === itemData.folder_id) || 
+                       (i.type === 'file' && i.msg_id === itemData.msg_id);
             });
             if (existing) selectedItems.delete(existing);
             else selectedItems.add(itemData);
@@ -594,19 +704,31 @@
                 if (!cb) return;
                 if (item.dataset.type === 'folder') {
                     const fid = parseInt(item.dataset.folderId);
-                    cb.checked = [...selectedItems].some(i => i.type==='folder' && i.folder_id === fid);
+                    cb.checked = [...selectedItems].some(i => i.type === 'folder' && i.folder_id === fid);
                 } else {
                     const msgId = parseInt(item.dataset.msgId);
-                    cb.checked = [...selectedItems].some(i => i.type==='file' && i.msg_id === msgId);
+                    cb.checked = [...selectedItems].some(i => i.type === 'file' && i.msg_id === msgId);
                 }
                 item.classList.toggle('selected', cb.checked);
             });
             const totalItems = document.querySelectorAll('.item').length;
             const selectedCount = selectedItems.size;
-            if (totalItems === 0) { selectAllCheckbox.checked = false; selectAllCheckbox.indeterminate = false; }
-            else if (selectedCount === 0) { selectAllCheckbox.checked = false; selectAllCheckbox.indeterminate = false; }
-            else if (selectedCount === totalItems) { selectAllCheckbox.checked = true; selectAllCheckbox.indeterminate = false; }
-            else { selectAllCheckbox.checked = false; selectAllCheckbox.indeterminate = true; }
+            if (totalItems === 0) { 
+                selectAllCheckbox.checked = false; 
+                selectAllCheckbox.indeterminate = false; 
+            }
+            else if (selectedCount === 0) { 
+                selectAllCheckbox.checked = false; 
+                selectAllCheckbox.indeterminate = false; 
+            }
+            else if (selectedCount === totalItems) { 
+                selectAllCheckbox.checked = true; 
+                selectAllCheckbox.indeterminate = false; 
+            }
+            else { 
+                selectAllCheckbox.checked = false; 
+                selectAllCheckbox.indeterminate = true; 
+            }
         }
 
         selectAllCheckbox.addEventListener('change', () => {
@@ -623,11 +745,13 @@
                         itemData = {type:'file', msg_id: msgId, name: item.dataset.name, custom_name: item.dataset.customName || null};
                     }
                     const key = type === 'folder' ? 'folder:' + itemData.folder_id : 'file:' + itemData.msg_id;
-                    if (![...selectedItems].some(i => (i.type===type && (type==='folder'?i.folder_id: i.msg_id) === (type==='folder'? itemData.folder_id: itemData.msg_id)))) {
+                    if (![...selectedItems].some(i => (i.type === type && (type === 'folder' ? i.folder_id : i.msg_id) === (type === 'folder' ? itemData.folder_id : itemData.msg_id)))) {
                         selectedItems.add(itemData);
                     }
                 });
-            } else { selectedItems.clear(); }
+            } else { 
+                selectedItems.clear(); 
+            }
             updateCheckboxStates();
         });
 
@@ -670,7 +794,9 @@
         }
 
         closePropertiesBtn.addEventListener('click', () => propertiesModal.classList.remove('active'));
-        propertiesModal.addEventListener('click', e => { if (e.target === propertiesModal) propertiesModal.classList.remove('active'); });
+        propertiesModal.addEventListener('click', e => { 
+            if (e.target === propertiesModal) propertiesModal.classList.remove('active'); 
+        });
 
         function renderContents(folders, files) {
             contentEl.innerHTML = '';
@@ -682,25 +808,43 @@
             }
             folders.forEach(folder => {
                 const displayValue = sortKey === 'date' ? (formatDateUTC(folder.date) || '—') : formatSize(folder.size);
-                const div = document.createElement('div'); div.className = 'item folder-item';
-                div.dataset.type = 'folder'; div.dataset.name = folder.name; div.dataset.folderId = folder.id;
+                const div = document.createElement('div'); 
+                div.className = 'item folder-item';
+                div.dataset.type = 'folder'; 
+                div.dataset.name = folder.name; 
+                div.dataset.folderId = folder.id;
                 div.innerHTML = `<div class="checkbox-col"><input type="checkbox" class="checkbox"></div><span class="icon">${folderIconSVG}</span><span class="item-name">${escapeHtml(folder.name)}</span><span class="item-size">${displayValue}</span><button class="item-info-btn" data-type="folder" data-id="${folder.id}">${infoIconSVG}</button>`;
                 const cb = div.querySelector('.checkbox');
-                cb.addEventListener('change', e => { e.stopPropagation(); toggleSelection({type:'folder', folder_id: folder.id, name: folder.name}); });
-                div.addEventListener('click', e => { if (e.target.tagName==='INPUT' && e.target.type==='checkbox') return; if (e.target.closest('.item-info-btn')) return; navigateToFolder(folder.id); });
-                div.querySelector('.item-info-btn').addEventListener('click', e => { e.stopPropagation(); showProperties('folder', folder.id); });
+                cb.addEventListener('change', e => { 
+                    e.stopPropagation(); 
+                    toggleSelection({type:'folder', folder_id: folder.id, name: folder.name}); 
+                });
+                div.addEventListener('click', e => { 
+                    if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') return; 
+                    if (e.target.closest('.item-info-btn')) return; 
+                    navigateToFolder(folder.id); 
+                });
+                div.querySelector('.item-info-btn').addEventListener('click', e => { 
+                    e.stopPropagation(); 
+                    showProperties('folder', folder.id); 
+                });
                 contentEl.appendChild(div);
             });
             files.forEach(file => {
                 const displayValue = sortKey === 'date' ? (formatDateUTC(file.date) || '—') : formatSize(file.size);
-                const div = document.createElement('div'); div.className = 'item file-item';
-                div.dataset.type = 'file'; div.dataset.msgId = file.msg_id; div.dataset.name = file.name;
+                const div = document.createElement('div'); 
+                div.className = 'item file-item';
+                div.dataset.type = 'file'; 
+                div.dataset.msgId = file.msg_id; 
+                div.dataset.name = file.name;
                 div.dataset.customName = file.custom_name || '';
                 let iconHtml = '';
                 if (file.has_thumb) {
-                    iconHtml = `<img class="thumb" src="${API_BASE}/api/thumb?message_id=${file.msg_id}&size=small&initData=${encodeURIComponent(initData)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />`;
+                    iconHtml = `<img class="thumb" src="${API_BASE}/api/thumb?message_id=${file.msg_id}&size=small&initData=${encodeURIComponent(tg.initData || "")}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />`;
                     iconHtml += `<span style="display:none;">${fileIconSVG}</span>`;
-                } else { iconHtml = fileIconSVG; }
+                } else { 
+                    iconHtml = fileIconSVG; 
+                }
                 let displayName = file.custom_name || file.name;
                 let subName = file.custom_name ? file.name : null;
                 let nameBlock = `<div class="item-name-block"><div class="item-name">${escapeHtml(displayName)}</div>`;
@@ -708,9 +852,18 @@
                 nameBlock += `</div>`;
                 div.innerHTML = `<div class="checkbox-col"><input type="checkbox" class="checkbox"></div><span class="icon">${iconHtml}</span>${nameBlock}<span class="item-size">${displayValue}</span><button class="item-info-btn" data-type="file" data-id="${file.msg_id}">${infoIconSVG}</button>`;
                 const cb = div.querySelector('.checkbox');
-                cb.addEventListener('change', e => { e.stopPropagation(); toggleSelection({type:'file', msg_id: file.msg_id, name: file.name, custom_name: file.custom_name}); });
-                div.addEventListener('click', e => { if (e.target.tagName==='INPUT' && e.target.type==='checkbox') return; if (e.target.closest('.item-info-btn')) return; });
-                div.querySelector('.item-info-btn').addEventListener('click', e => { e.stopPropagation(); showProperties('file', file.msg_id); });
+                cb.addEventListener('change', e => { 
+                    e.stopPropagation(); 
+                    toggleSelection({type:'file', msg_id: file.msg_id, name: file.name, custom_name: file.custom_name}); 
+                });
+                div.addEventListener('click', e => { 
+                    if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') return; 
+                    if (e.target.closest('.item-info-btn')) return; 
+                });
+                div.querySelector('.item-info-btn').addEventListener('click', e => { 
+                    e.stopPropagation(); 
+                    showProperties('file', file.msg_id); 
+                });
                 contentEl.appendChild(div);
             });
             updateCheckboxStates();
@@ -723,16 +876,38 @@
         }
 
         menuBtn.addEventListener('click', ()=>popupOverlay.classList.add('active'));
-        popupOverlay.addEventListener('click', e => { if (e.target===popupOverlay) popupOverlay.classList.remove('active'); });
-        createFolderBtn.addEventListener('click', ()=>{ popupOverlay.classList.remove('active'); openNameModal('create'); });
-        moveBtn.addEventListener('click', ()=>{ popupOverlay.classList.remove('active'); if (selectedItems.size===0) { showToast('Сначала выделите файлы или папки'); return; } openMoveModal(); });
+        popupOverlay.addEventListener('click', e => { 
+            if (e.target === popupOverlay) popupOverlay.classList.remove('active'); 
+        });
+        createFolderBtn.addEventListener('click', ()=>{ 
+            popupOverlay.classList.remove('active'); 
+            openNameModal('create'); 
+        });
+        moveBtn.addEventListener('click', ()=>{ 
+            popupOverlay.classList.remove('active'); 
+            if (selectedItems.size === 0) { 
+                showToast('Сначала выделите файлы или папки'); 
+                return; 
+            } 
+            openMoveModal(); 
+        });
         renameBtn.addEventListener('click', ()=>{
             popupOverlay.classList.remove('active');
-            if (selectedItems.size === 0) { showToast('Сначала выделите элемент для переименования'); return; }
-            if (selectedItems.size > 1) { showToast('Можно переименовать только один элемент за раз'); return; }
+            if (selectedItems.size === 0) { 
+                showToast('Сначала выделите элемент для переименования'); 
+                return; 
+            }
+            if (selectedItems.size > 1) { 
+                showToast('Можно переименовать только один элемент за раз'); 
+                return; 
+            }
             const item = [...selectedItems][0];
-            if (item.type === 'folder') { openNameModal('rename', item.name, 'folder', item.folder_id.toString()); }
-            else { openNameModal('rename', item.custom_name || item.name, 'file', item.msg_id.toString()); }
+            if (item.type === 'folder') { 
+                openNameModal('rename', item.name, 'folder', item.folder_id.toString()); 
+            }
+            else { 
+                openNameModal('rename', item.custom_name || item.name, 'file', item.msg_id.toString()); 
+            }
         });
 
         function buildMoveBreadcrumbs() {
@@ -751,12 +926,14 @@
                     if (!isNaN(fid)) moveToFolder(fid);
                 });
             });
-            requestAnimationFrame(() => { moveBreadcrumbs.scrollLeft = moveBreadcrumbs.scrollWidth; });
+            requestAnimationFrame(() => { 
+                moveBreadcrumbs.scrollLeft = moveBreadcrumbs.scrollWidth; 
+            });
         }
 
         async function loadMoveContents() {
             try {
-                const d = await apiCall('/api/contents',{folder_id: moveCurrentFolderId});
+                const d = await apiCall('/api/contents', {folder_id: moveCurrentFolderId});
                 moveBreadcrumbsData = d.breadcrumbs;
                 moveParentId = d.parent_id;
                 buildMoveBreadcrumbs();
@@ -786,7 +963,9 @@
             moveCurrentFolderId = 0;
             loadMoveContents();
         }
-        function closeMoveModal() { moveModalOverlay.classList.remove('active'); }
+        function closeMoveModal() { 
+            moveModalOverlay.classList.remove('active'); 
+        }
         moveBackBtn.addEventListener('click', ()=>{
             if (moveCurrentFolderId === 0) return;
             moveToFolder(moveParentId);
@@ -794,22 +973,44 @@
         moveCancelTopBtn.addEventListener('click', closeMoveModal);
         moveCancelBtn.addEventListener('click', closeMoveModal);
         moveConfirmBtn.addEventListener('click', async () => {
-            if (moveCurrentFolderId === currentFolderId) { showToast('Нельзя переместить в ту же папку'); return; }
+            if (moveCurrentFolderId === currentFolderId) { 
+                showToast('Нельзя переместить в ту же папку'); 
+                return; 
+            }
             const items = [...selectedItems].map(item => {
                 if (item.type === 'folder') return {type:'folder', folder_id: item.folder_id};
                 else return {type:'file', msg_id: item.msg_id};
             });
-            try { await apiCall('/api/move',{target_folder_id: moveCurrentFolderId, items}); closeMoveModal(); selectedItems.clear(); loadContents(); }
-            catch(e) { alert('Ошибка перемещения: '+e.message); }
+            try { 
+                await apiCall('/api/move', {target_folder_id: moveCurrentFolderId, items}); 
+                closeMoveModal(); 
+                selectedItems.clear(); 
+                loadContents(); 
+            }
+            catch(e) { 
+                alert('Ошибка перемещения: ' + e.message); 
+            }
         });
-        moveModalOverlay.addEventListener('click', e => { if (e.target===moveModalOverlay) closeMoveModal(); });
+        moveModalOverlay.addEventListener('click', e => { 
+            if (e.target === moveModalOverlay) closeMoveModal(); 
+        });
 
         document.addEventListener('contextmenu', function(e) {
             e.preventDefault();
             document.getElementById('popupOverlay').classList.add('active');
         });
 
-        loadContents();
+        // Исправленная функция инициализации
+        function waitForInitDataAndStart() {
+            if (tg.initData) {
+                loadContents();
+                connectWebSocket();
+            } else {
+                setTimeout(waitForInitDataAndStart, 100);
+            }
+        }
+        
+        waitForInitDataAndStart();
     </script>
 </body>
 </html>
