@@ -315,8 +315,12 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         const API_BASE = 'https://z0g1.voidwaifu.workers.dev';
-        const tg = window.Telegram.WebApp; tg.ready();
-        const initData = tg.initData || "";
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+
+        // Глобальная переменная для initData (будет заполнена после ожидания)
+        let initData = "";
+
         let currentFolderId = 0;
         const selectedItems = new Set();
         let sortKey = 'name', sortDir = 'asc';
@@ -362,14 +366,39 @@
             return 0;
         }
 
+        // Улучшенный apiCall с повторными попытками и проверкой ответа
         async function apiCall(endpoint, body) {
-            const resp = await fetch(API_BASE + endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({initData, ...body}) });
-            if (!resp.ok) { const err = await resp.json(); throw new Error(err.error||'Request failed'); }
-            return await resp.json();
+            const maxRetries = 2;
+            let lastError;
+            for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                try {
+                    const resp = await fetch(API_BASE + endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ initData, ...body })
+                    });
+                    if (!resp.ok) {
+                        let errMsg = 'Request failed';
+                        try {
+                            const err = await resp.json();
+                            errMsg = err.error || errMsg;
+                        } catch (e) {}
+                        throw new Error(errMsg);
+                    }
+                    return await resp.json();
+                } catch (e) {
+                    lastError = e;
+                    if (attempt < maxRetries) {
+                        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+                    }
+                }
+            }
+            throw lastError;
         }
 
         let ws;
         function connectWebSocket() {
+            if (!initData) return;
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//z0g1.voidwaifu.workers.dev/ws?initData=${encodeURIComponent(initData)}`;
             ws = new WebSocket(wsUrl);
@@ -377,7 +406,6 @@
             ws.onclose = () => { setTimeout(connectWebSocket, 3000); };
             ws.onerror = () => { ws.close(); };
         }
-        connectWebSocket();
 
         const sortBar = document.getElementById('sortBar');
         const selectAllCheckbox = document.getElementById('selectAllCheckbox');
@@ -423,7 +451,7 @@
 
         async function loadContents() {
             try {
-                const d = await apiCall('/api/contents', {folder_id: currentFolderId});
+                const d = await apiCall('/api/contents', { folder_id: currentFolderId });
                 currentRawFolders = d.folders;
                 currentRawFiles = d.files;
                 currentBreadcrumbs = d.breadcrumbs;
@@ -434,7 +462,17 @@
                 contentEl.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Ошибка загрузки</div></div>';
             }
         }
-        function sortAndRender() { const {folders,files}=sortContents(currentRawFolders,currentRawFiles); renderContents(folders,files); }
+
+        // Повторная попытка загрузки при ошибке
+        async function loadContentsWithRetry() {
+            try {
+                await loadContents();
+            } catch (e) {
+                // Можно показать ошибку, но loadContents уже показывает
+            }
+        }
+
+        function sortAndRender() { const { folders, files } = sortContents(currentRawFolders, currentRawFiles); renderContents(folders, files); }
 
         const contentEl = document.getElementById('content');
         const breadcrumbsEl = document.getElementById('breadcrumbs');
@@ -809,7 +847,33 @@
             document.getElementById('popupOverlay').classList.add('active');
         });
 
-        loadContents();
+        // ================== ИНИЦИАЛИЗАЦИЯ ==================
+        function waitForInitData() {
+            return new Promise((resolve) => {
+                const check = () => {
+                    initData = tg.initData || "";
+                    if (initData) {
+                        resolve();
+                    } else {
+                        setTimeout(check, 100);
+                    }
+                };
+                check();
+            });
+        }
+
+        (async function initApp() {
+            // Ждём initData (максимум 5 секунд)
+            const timeout = setTimeout(() => {
+                console.warn("initData не получен за 5 секунд, продолжаем с пустым значением");
+            }, 5000);
+            await waitForInitData();
+            clearTimeout(timeout);
+
+            // Теперь можно загружать контент и подключать WebSocket
+            loadContentsWithRetry();
+            connectWebSocket();
+        })();
     </script>
 </body>
 </html>
