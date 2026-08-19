@@ -318,7 +318,7 @@
         const tg = window.Telegram.WebApp;
         tg.ready();
 
-        // Глобальная переменная для initData (будет заполнена после ожидания)
+        // Глобальная переменная для initData
         let initData = "";
 
         let currentFolderId = 0;
@@ -366,9 +366,9 @@
             return 0;
         }
 
-        // Улучшенный apiCall с повторными попытками и проверкой ответа
+        // Улучшенный apiCall с повторными попытками, обработкой 401 и ожиданием initData
         async function apiCall(endpoint, body) {
-            const maxRetries = 2;
+            const maxRetries = 3;
             let lastError;
             for (let attempt = 0; attempt <= maxRetries; attempt++) {
                 try {
@@ -377,6 +377,13 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ initData, ...body })
                     });
+
+                    // Если 401 и initData пуст, ждём его появления
+                    if (resp.status === 401 && !initData) {
+                        await waitForInitData();
+                        continue;
+                    }
+
                     if (!resp.ok) {
                         let errMsg = 'Request failed';
                         try {
@@ -394,6 +401,20 @@
                 }
             }
             throw lastError;
+        }
+
+        // Функция ожидания initData (до 30 секунд)
+        async function waitForInitData() {
+            let attempts = 0;
+            const maxAttempts = 300; // 300 * 100мс = 30 секунд
+            while (!initData && attempts < maxAttempts) {
+                initData = tg.initData || "";
+                if (!initData) {
+                    attempts++;
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+            return initData !== "";
         }
 
         let ws;
@@ -463,12 +484,11 @@
             }
         }
 
-        // Повторная попытка загрузки при ошибке
         async function loadContentsWithRetry() {
             try {
                 await loadContents();
             } catch (e) {
-                // Можно показать ошибку, но loadContents уже показывает
+                // loadContents уже показывает ошибку
             }
         }
 
@@ -848,29 +868,19 @@
         });
 
         // ================== ИНИЦИАЛИЗАЦИЯ ==================
-        function waitForInitData() {
-            return new Promise((resolve) => {
-                const check = () => {
-                    initData = tg.initData || "";
-                    if (initData) {
-                        resolve();
-                    } else {
-                        setTimeout(check, 100);
-                    }
-                };
-                check();
-            });
-        }
-
         (async function initApp() {
-            // Ждём initData (максимум 5 секунд)
-            const timeout = setTimeout(() => {
-                console.warn("initData не получен за 5 секунд, продолжаем с пустым значением");
-            }, 5000);
-            await waitForInitData();
-            clearTimeout(timeout);
+            // Показываем экран загрузки
+            contentEl.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-text">Загрузка...</div></div>';
 
-            // Теперь можно загружать контент и подключать WebSocket
+            // Ждём initData
+            const hasInitData = await waitForInitData();
+
+            if (!hasInitData) {
+                contentEl.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Ошибка инициализации. Попробуйте перезапустить приложение.</div></div>';
+                return;
+            }
+
+            // Теперь загружаем контент и подключаем WebSocket
             loadContentsWithRetry();
             connectWebSocket();
         })();
