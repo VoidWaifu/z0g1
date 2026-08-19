@@ -362,22 +362,45 @@
             return 0;
         }
 
-        async function apiCall(endpoint, body) {
-            const resp = await fetch(API_BASE + endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({initData, ...body}) });
-            if (!resp.ok) { const err = await resp.json(); throw new Error(err.error||'Request failed'); }
-            return await resp.json();
-        }
+        let currentRequestAbortController = null;
 
-        let ws;
-        function connectWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//z0g1.voidwaifu.workers.dev/ws?initData=${encodeURIComponent(initData)}`;
-            ws = new WebSocket(wsUrl);
-            ws.onmessage = (event) => { try { const msg = JSON.parse(event.data); if (msg.type) loadContents(); } catch(e) {} };
-            ws.onclose = () => { setTimeout(connectWebSocket, 3000); };
-            ws.onerror = () => { ws.close(); };
+        async function apiCall(endpoint, body) {
+            // Отменяем предыдущий незавершенный запрос
+            if (currentRequestAbortController) {
+                currentRequestAbortController.abort();
+            }
+            
+            currentRequestAbortController = new AbortController();
+            const signal = currentRequestAbortController.signal;
+            
+            try {
+                const resp = await fetch(API_BASE + endpoint, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({initData, ...body}),
+                    signal: signal,
+                });
+                
+                if (!resp.ok) {
+                    let errMsg = 'Request failed';
+                    try {
+                        const err = await resp.json();
+                        errMsg = err.error || errMsg;
+                    } catch(e) {}
+                    throw new Error(errMsg);
+                }
+                return await resp.json();
+            } catch (e) {
+                if (e.name === 'AbortError') {
+                    // Запрос был отменен - не считаем это ошибкой
+                    console.log('Request cancelled');
+                    return null;
+                }
+                throw e;
+            } finally {
+                currentRequestAbortController = null;
+            }
         }
-        connectWebSocket();
 
         const sortBar = document.getElementById('sortBar');
         const selectAllCheckbox = document.getElementById('selectAllCheckbox');
@@ -420,21 +443,91 @@
         let currentRawFolders = [], currentRawFiles = [];
         let currentBreadcrumbs = [];
         let currentParentId = 0;
+        let loadRetryCount = 0;
+        const MAX_RETRIES = 3;
+        let isLoading = false;
 
         async function loadContents() {
+            if (isLoading) return;
+            isLoading = true;
+            
             try {
                 const d = await apiCall('/api/contents', {folder_id: currentFolderId});
-                currentRawFolders = d.folders;
-                currentRawFiles = d.files;
-                currentBreadcrumbs = d.breadcrumbs;
-                currentParentId = d.parent_id;
+                if (d === null) {
+                    // Запрос был отменен
+                    isLoading = false;
+                    return;
+                }
+                currentRawFolders = d.folders || [];
+                currentRawFiles = d.files || [];
+                currentBreadcrumbs = d.breadcrumbs || [];
+                currentParentId = d.parent_id || 0;
                 buildBreadcrumbs();
                 sortAndRender();
+                loadRetryCount = 0; // Сброс счетчика при успехе
             } catch(e) {
-                contentEl.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Ошибка загрузки</div></div>';
+                console.error('Load error:', e);
+                loadRetryCount++;
+                
+                // Показываем ошибку только после нескольких неудачных попыток
+                if (loadRetryCount >= MAX_RETRIES) {
+                    contentEl.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">⚠️</div>
+                            <div class="empty-text">Ошибка загрузки</div>
+                            <div style="font-size:14px;margin-top:8px;color:var(--tg-theme-hint-color);">
+                                Попробуйте обновить страницу
+                            </div>
+                            <div style="font-size:12px;margin-top:4px;color:var(--tg-theme-hint-color);opacity:0.6;">
+                                Нажмите для повторной попытки
+                            </div>
+                        </div>
+                    `;
+                    contentEl.style.cursor = 'pointer';
+                    contentEl.onclick = () => {
+                        contentEl.onclick = null;
+                        loadRetryCount = 0;
+                        loadContents();
+                    };
+                } else {
+                    // Автоматическая повторная попытка через 2 секунды
+                    setTimeout(() => {
+                        isLoading = false;
+                        loadContents();
+                    }, 2000);
+                }
+            } finally {
+                isLoading = false;
             }
         }
-        function sortAndRender() { const {folders,files}=sortContents(currentRawFolders,currentRawFiles); renderContents(folders,files); }
+
+        // Периодическое обновление (замена WebSocket)
+        let lastAutoRefreshTime = 0;
+        let isAutoRefreshing = false;
+
+        async function autoRefresh() {
+            if (isAutoRefreshing) return;
+            isAutoRefreshing = true;
+            try {
+                const now = Date.now();
+                if (now - lastAutoRefreshTime > 3000) {
+                    await loadContents();
+                    lastAutoRefreshTime = now;
+                }
+            } catch (e) {
+                // Игнорируем ошибки автоперезагрузки
+            } finally {
+                isAutoRefreshing = false;
+            }
+        }
+
+        // Запускаем периодическое обновление каждые 5 секунд
+        setInterval(autoRefresh, 5000);
+
+        function sortAndRender() { 
+            const {folders,files}=sortContents(currentRawFolders,currentRawFiles); 
+            renderContents(folders, files); 
+        }
 
         const contentEl = document.getElementById('content');
         const breadcrumbsEl = document.getElementById('breadcrumbs');
@@ -644,6 +737,7 @@
             propContainsRow.style.display = (type === 'folder') ? 'flex' : 'none';
             try {
                 const data = await apiCall('/api/item_properties', { type, id });
+                if (data === null) return;
                 propName.textContent = data.name || '—';
                 if (data.custom_name) {
                     propCustomName.textContent = data.custom_name;
@@ -652,7 +746,7 @@
                 propDate.textContent = formatDateUTC(data.date) || data.date || '—';
                 propSize.innerHTML = `${formatSize(data.size)}<br>(${data.size} байт)`;
                 if (type === 'folder') {
-                    propContains.textContent = `${data.file_text}, ${data.folder_text}`;
+                    propContains.textContent = data.file_text && data.folder_text ? `${data.file_text}, ${data.folder_text}` : '—';
                     if (data.path) {
                         propPath.textContent = data.path;
                         propRowPath.style.display = 'flex';
@@ -674,6 +768,9 @@
 
         function renderContents(folders, files) {
             contentEl.innerHTML = '';
+            contentEl.style.cursor = 'default';
+            contentEl.onclick = null;
+            
             const isEmpty = !folders.length && !files.length;
             if (isEmpty) {
                 contentEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">Пусто</div></div>';
@@ -719,6 +816,7 @@
         function navigateToFolder(folderId) {
             currentFolderId = folderId;
             selectedItems.clear();
+            loadRetryCount = 0;
             loadContents();
         }
 
@@ -757,11 +855,12 @@
         async function loadMoveContents() {
             try {
                 const d = await apiCall('/api/contents',{folder_id: moveCurrentFolderId});
-                moveBreadcrumbsData = d.breadcrumbs;
-                moveParentId = d.parent_id;
+                if (d === null) return;
+                moveBreadcrumbsData = d.breadcrumbs || [];
+                moveParentId = d.parent_id || 0;
                 buildMoveBreadcrumbs();
                 moveContent.innerHTML = '';
-                if (!d.folders.length) {
+                if (!d.folders || !d.folders.length) {
                     moveContent.innerHTML = '<div class="empty-state"><div class="empty-text">Папок нет</div></div>';
                     return;
                 }
@@ -809,6 +908,7 @@
             document.getElementById('popupOverlay').classList.add('active');
         });
 
+        // Загружаем содержимое при старте
         loadContents();
     </script>
 </body>
