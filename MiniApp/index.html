@@ -319,6 +319,7 @@
         tg.ready();
 
         let initData = "";
+
         let currentFolderId = 0;
         const selectedItems = new Set();
         let sortKey = 'name', sortDir = 'asc';
@@ -861,28 +862,21 @@
             document.getElementById('popupOverlay').classList.add('active');
         });
 
-        let loadingInterval = null;
-        function startLoadingAnimation() {
-            const loadingText = document.getElementById('loadingText');
-            if (!loadingText) return;
-            let dots = 0;
-            clearInterval(loadingInterval);
-            loadingInterval = setInterval(() => {
-                dots = (dots % 3) + 1;
-                loadingText.textContent = 'Загрузка' + '.'.repeat(dots);
-            }, 300);
-        }
-        function stopLoadingAnimation() {
-            clearInterval(loadingInterval);
-            loadingInterval = null;
-        }
-
         (async function initApp() {
-            contentEl.innerHTML = '<div class="empty-state"><div class="empty-text" id="loadingText">Загрузка</div></div>';
-            startLoadingAnimation();
+            contentEl.innerHTML = '<div class="empty-state"><div class="empty-text">Загрузка</div></div>';
+            const loadingTextEl = document.querySelector('.empty-text');
+            let dotCount = 0;
+            const loadingInterval = setInterval(() => {
+                dotCount = (dotCount % 3) + 1;
+                loadingTextEl.textContent = 'Загрузка' + '.'.repeat(dotCount);
+            }, 500);
 
-            const hasInitData = await waitForInitData();
-            stopLoadingAnimation();
+            let hasInitData = false;
+            try {
+                hasInitData = await waitForInitData();
+            } finally {
+                clearInterval(loadingInterval);
+            }
 
             if (!hasInitData) {
                 contentEl.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Ошибка инициализации. Попробуйте перезапустить приложение.</div></div>';
