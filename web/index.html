@@ -405,7 +405,7 @@
     </div>
 
     <script>
-        const API_BASE = 'https://z0g1.wispbyte.app';
+        const API_BASE = 'https://voidwaifu.wispbyte.app/z0g1';
         let authToken = null;
         let currentUserId = null;
         let currentUser = null;
@@ -490,8 +490,8 @@
                     document.getElementById('userAvatar').src = user.photo_url;
                 }
 
-                initWebSocket();
                 loadContents();
+                setInterval(loadContents, 3000);
             } catch (e) {
                 showToast('Ошибка авторизации');
                 console.error(e);
@@ -514,7 +514,6 @@
             authToken = null;
             currentUserId = null;
             currentUser = null;
-            if (ws) { ws.close(); ws = null; }
             localStorage.removeItem('tg_user');
             localStorage.removeItem('tg_auth_state');
             document.getElementById('loginScreen').style.display = 'flex';
@@ -540,21 +539,6 @@
                 document.getElementById('logoutModal').classList.remove('active');
             }
         });
-
-        let ws;
-        function initWebSocket() {
-            if (ws) ws.close();
-            const wsUrl = `wss://z0g1.wispbyte.app/ws?token=${encodeURIComponent(authToken)}`;
-            ws = new WebSocket(wsUrl);
-            ws.onmessage = (event) => {
-                try {
-                    const msg = JSON.parse(event.data);
-                    if (msg.type) loadContents();
-                } catch(e) {}
-            };
-            ws.onclose = () => { setTimeout(initWebSocket, 3000); };
-            ws.onerror = () => { ws.close(); };
-        }
 
         const sortBar = document.getElementById('sortBar');
         const selectAllCheckbox = document.getElementById('selectAllCheckbox');
@@ -816,7 +800,6 @@
                 updateCheckboxStates();
                 return;
             }
-            // Динамический выбор отображаемого значения
             folders.forEach(folder => {
                 const displayValue = sortKey === 'date' ? (formatDateUTC(folder.date) || '—') : formatSize(folder.size);
                 const div = document.createElement('div'); div.className = 'item folder-item';
