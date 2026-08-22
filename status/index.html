@@ -241,7 +241,6 @@
             <nav class="desktop-nav" id="desktopNav">
                 <a href="https://voidwaifu.github.io/z0g1/">Главная страница</a>
                 <a href="https://t.me/z0g1_bot">Телеграм бот</a>
-                <a href="https://voidwaifu.github.io/z0g1/web/">Веб версия</a>
                 <a href="https://voidwaifu.github.io/z0g1/status/">Статус</a>
                 <a href="https://voidwaifu.github.io/z0g1/privacy/" class="privacy-link">Политика конфиденциальности</a>
             </nav>
@@ -259,7 +258,6 @@
     <div class="mobile-menu" id="mobileMenu">
         <a href="https://voidwaifu.github.io/z0g1/">Главная страница</a>
         <a href="https://t.me/z0g1_bot">Телеграм бот</a>
-        <a href="https://voidwaifu.github.io/z0g1/web/">Веб версия</a>
         <a href="https://voidwaifu.github.io/z0g1/status/">Статус</a>
         <a href="https://voidwaifu.github.io/z0g1/privacy/" class="privacy-link-mob">Политика конфиденциальности</a>
     </div>
@@ -321,11 +319,6 @@
                 <h3>Мини приложение</h3>
                 <span class="status-text" id="compMiniAppStatus"><span class="status-dot-sm"></span> Загрузка...</span>
             </div>
-            <div class="card" id="compWeb">
-                <span class="card-icon">💻</span>
-                <h3>Веб версия</h3>
-                <span class="status-text" id="compWebStatus"><span class="status-dot-sm"></span> Загрузка...</span>
-            </div>
         </div>
     </main>
 
@@ -386,7 +379,6 @@
                 site: { el: document.getElementById('compSiteStatus'), dot: document.querySelector('#compSite .status-dot-sm'), label: 'Сайт' },
                 bot: { el: document.getElementById('compBotStatus'), dot: document.querySelector('#compBot .status-dot-sm'), label: 'Телеграм бот' },
                 mini_app: { el: document.getElementById('compMiniAppStatus'), dot: document.querySelector('#compMiniApp .status-dot-sm'), label: 'Мини приложение' },
-                web_version: { el: document.getElementById('compWebStatus'), dot: document.querySelector('#compWeb .status-dot-sm'), label: 'Веб версия' }
             };
 
             function setComponentStatus(key, status) {
